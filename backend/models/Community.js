@@ -13,7 +13,7 @@ const CommunitySchema = new mongoose.Schema({
   lastUpdated: { type: Date, default: Date.now }
 });
 
-// Compound unique index on region and accountType
+// Compound unique index on region + accountType
 CommunitySchema.index({ region: 1, accountType: 1 }, { unique: true });
 
 module.exports = mongoose.model('Community', CommunitySchema);

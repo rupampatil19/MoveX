@@ -21,10 +21,9 @@ const AICoachPage = ({ user }) => {
   }, [messages]);
 
   const fetchData = async () => {
-  try {
-    const contextRes = await API.get('/ai-coach/context');
-
-    setContext(contextRes.data);
+    try {
+      const contextRes = await API.get('/ai-coach/context');
+      setContext(contextRes.data);
       setMessages([{ role: 'assistant', content: `Hello ${user.name.split(' ')[0]}! I'm your MoveX AI Coach. How can I help you today?` }]);
       setLoading(false);
     } catch (err) {
@@ -62,16 +61,15 @@ const AICoachPage = ({ user }) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-center gap-3">
-        <Bot className="w-8 h-8 text-green-600" />
+        <Bot className="w-8 h-8 text-[#2563EB]" />
         <h1 className="text-3xl font-bold text-gray-800">AI Coach</h1>
       </div>
-
 
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col h-[60vh]">
         <div className="flex-1 overflow-y-auto space-y-3 mb-4">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] p-3 rounded-xl ${msg.role === 'user' ? 'bg-green-100 text-gray-800' : 'bg-gray-50 text-gray-700'}`}>
+              <div className={`max-w-[80%] p-3 rounded-xl ${msg.role === 'user' ? 'bg-[#2563EB] text-white' : 'bg-gray-50 text-gray-700'}`}>
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
             </div>
@@ -95,7 +93,7 @@ const AICoachPage = ({ user }) => {
             placeholder="Ask your coach..."
             className="flex-1 bg-gray-100 border border-gray-200 rounded-lg p-3 text-gray-800"
           />
-          <button type="submit" className="bg-green-500 hover:bg-green-600 text-white px-4 rounded-lg">
+          <button type="submit" className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white px-4 rounded-lg">
             <Send className="w-4 h-4" />
           </button>
         </form>
@@ -114,7 +112,7 @@ const AICoachPage = ({ user }) => {
             <p className="text-gray-500 text-sm">Streak</p>
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
-            <TrendingUp className="w-6 h-6 text-green-500 mx-auto" />
+            <TrendingUp className="w-6 h-6 text-[#2563EB] mx-auto" />
             <p className="text-gray-800 font-bold">{context.weekly.activities}</p>
             <p className="text-gray-500 text-sm">Weekly Activities</p>
           </div>

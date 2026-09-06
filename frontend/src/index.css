@@ -7,3 +7,32 @@ html, body {
   background-color: #F7FAF7;
   color: #1F2D24;
 }
+
+/* Force normal map rendering */
+.leaflet-container {
+  background: #fff !important;
+  filter: none !important;
+}
+
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.leaflet-tile {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Remove any accidental dark overlay */
+.map-overlay,
+.map-dark-overlay,
+.map-shade,
+.dashboard-map-overlay {
+  display: none !important;
+}

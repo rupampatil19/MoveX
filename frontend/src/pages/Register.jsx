@@ -69,6 +69,7 @@ const Register = () => {
         <div className="mb-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Choose Your Flow</label>
           <div className="grid grid-cols-2 gap-3">
+            {/* Beginner Flow Card */}
             <div
               className={`border-2 rounded-xl p-3 cursor-pointer transition ${
                 form.accountType === 'BEGINNER' ? 'border-[#2563EB] bg-blue-50' : 'border-gray-200 hover:border-gray-300'
@@ -80,7 +81,12 @@ const Register = () => {
                 <span className="font-semibold text-sm">Beginner Flow</span>
               </div>
               <p className="text-xs text-gray-500">Personal fitness journey</p>
+              <div className="mt-2 inline-block bg-[#2563EB] text-white text-xs font-bold px-2 py-1 rounded-full">
+                ₹0
+              </div>
             </div>
+
+            {/* Pro Athlete Flow Card */}
             <div
               className={`border-2 rounded-xl p-3 cursor-pointer transition ${
                 form.accountType === 'PRO' ? 'border-[#2563EB] bg-blue-50' : 'border-gray-200 hover:border-gray-300'
@@ -92,6 +98,9 @@ const Register = () => {
                 <span className="font-semibold text-sm">Pro Athlete Flow</span>
               </div>
               <p className="text-xs text-gray-500">Community & competition</p>
+              <div className="mt-2 inline-block bg-[#2563EB] text-white text-xs font-bold px-2 py-1 rounded-full">
+                ₹299
+              </div>
             </div>
           </div>
         </div>

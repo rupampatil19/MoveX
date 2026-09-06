@@ -5,6 +5,19 @@ const User = require('../models/User');
 
 const router = express.Router();
 
+// Auth middleware
+const auth = (req, res, next) => {
+  const token = req.header('x-auth-token');
+  if (!token) return res.status(401).json({ msg: 'No token, authorization denied' });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch (err) {
+    res.status(401).json({ msg: 'Token is not valid' });
+  }
+};
+
 // Register
 router.post('/register', async (req, res) => {
   try {
@@ -60,6 +73,17 @@ router.post('/login', async (req, res) => {
         accountType: user.accountType
       }
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get current user (including stats)
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+    res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

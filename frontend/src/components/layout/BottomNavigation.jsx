@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Map, PlusCircle, Users, User, Menu, X,
   BarChart3, ScrollText, Activity, Globe2, Trophy, Award,
-  Medal, Bot, Store, CalendarDays, Settings, LogOut
+  Medal, Bot, Store, CalendarDays, Settings, LogOut, Camera
 } from 'lucide-react';
 
 const primaryItems = [
@@ -14,23 +14,30 @@ const primaryItems = [
   { to: '/profile', icon: User, label: 'Profile' },
 ];
 
-const moreItems = [
-  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/quests', icon: ScrollText, label: 'Quests' },
-  { to: '/activity', icon: Activity, label: 'Activity' },
-  { to: '/state-hub', icon: Globe2, label: 'State Hub' },
-  { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-  { to: '/rewards', icon: Award, label: 'Rewards' },
-  { to: '/athlete', icon: Medal, label: 'Athlete' },
-  { to: '/ai-coach', icon: Bot, label: 'AI Coach' },
-  { to: '/store', icon: Store, label: 'Store' },
-  { to: '/events', icon: CalendarDays, label: 'Events' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-];
-
-const BottomNavigation = ({ logout }) => {
+const BottomNavigation = ({ user, logout }) => {
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const isPro = user?.accountType === 'PRO';
+
+  const commonMoreItems = [
+    { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { to: '/quests', icon: ScrollText, label: 'Quests' },
+    { to: '/activity', icon: Activity, label: 'Activity' },
+    { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+    { to: '/rewards', icon: Award, label: 'Rewards' },
+    { to: '/ai-coach', icon: Bot, label: 'AI Coach' },
+    { to: '/ar', icon: Camera, label: 'AR' },   // AR added
+    { to: '/events', icon: CalendarDays, label: 'Events' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
+  ];
+
+  const proOnlyItems = [
+    { to: '/state-hub', icon: Globe2, label: 'State Hub' },
+    { to: '/athlete', icon: Medal, label: 'Athlete' },
+    { to: '/store', icon: Store, label: 'Store' },
+  ];
+
+  const moreItems = isPro ? [...commonMoreItems, ...proOnlyItems] : commonMoreItems;
 
   const handleLogout = () => {
     if (window.confirm('Logout?\n\nAre you sure you want to logout from this account?')) {
@@ -48,7 +55,7 @@ const BottomNavigation = ({ logout }) => {
           if (item.center) {
             return (
               <Link key={item.to} to={item.to} className="flex flex-col items-center -mt-6">
-                <div className="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center shadow-lg">
+                <div className="w-14 h-14 rounded-full bg-[#2563EB] flex items-center justify-center shadow-lg">
                   <Icon className="w-7 h-7 text-white" />
                 </div>
                 <span className="text-xs text-gray-700 mt-1">{item.label}</span>
@@ -60,7 +67,7 @@ const BottomNavigation = ({ logout }) => {
               key={item.to}
               to={item.to}
               className={`flex flex-col items-center px-3 py-1 rounded-lg ${
-                isActive ? 'text-blue-700' : 'text-gray-500'
+                isActive ? 'text-[#2563EB]' : 'text-gray-500'
               }`}
             >
               <Icon className="w-6 h-6" />
@@ -71,7 +78,7 @@ const BottomNavigation = ({ logout }) => {
         <button
           onClick={() => setIsMoreOpen(true)}
           className={`flex flex-col items-center px-3 py-1 rounded-lg ${
-            isMoreOpen ? 'text-blue-700' : 'text-gray-500'
+            isMoreOpen ? 'text-[#2563EB]' : 'text-gray-500'
           }`}
         >
           <Menu className="w-6 h-6" />
@@ -102,7 +109,7 @@ const BottomNavigation = ({ logout }) => {
                     onClick={() => setIsMoreOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700"
                   >
-                    <Icon className="w-5 h-5 text-blue-500" />
+                    <Icon className="w-5 h-5 text-[#2563EB]" />
                     <span className="text-sm">{item.label}</span>
                   </Link>
                 );
