@@ -12,6 +12,7 @@
   "dependencies": {
     "@turf/turf": "^7.4.0",
     "axios": "^1.19.0",
+    "canvas-confetti": "^1.9.4",
     "framer-motion": "^13.1.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.33.0",

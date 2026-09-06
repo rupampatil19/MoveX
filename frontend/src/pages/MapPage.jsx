@@ -279,11 +279,11 @@ const MapPage = () => {
           </ul>
           <h3 className="font-semibold text-gray-800 mt-2 mb-1">Regional Levels</h3>
           <ul className="space-y-1 text-gray-600">
-            <li>🏖️ Tide Hut</li>
-            <li>⚓ Wave Dock</li>
-            <li>🏰 Aqua Bastion</li>
-            <li>🏯 Ocean Citadel</li>
-            <li>🔱 Poseidon's Hub</li>
+            <li>⚡ Energy Spark</li>
+            <li>👥 Community Rise</li>
+            <li>🏠 Tide Hut</li>
+            <li>🏰 Ocean Citadel</li>
+            <li>👑 Poseidon's Hub</li>
           </ul>
         </div>
       </div>

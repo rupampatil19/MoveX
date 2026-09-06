@@ -8,7 +8,7 @@ const Logo = ({ size = 'md', pro = false, light = false }) => {
   };
   const { text, tagline } = sizes[size] || sizes.md;
 
-  // Move text color: white on dark, dark gray on light backgrounds
+  // Correctly set text color: dark on light backgrounds, white on dark backgrounds
   const moveColor = light ? 'text-gray-900' : 'text-white';
 
   return (

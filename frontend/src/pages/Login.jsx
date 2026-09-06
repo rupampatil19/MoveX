@@ -14,9 +14,16 @@ const Login = ({ setUser }) => {
     setError('');
     try {
       const res = await API.post('/auth/login', form);
+      
+      // Store token and user data in localStorage
       localStorage.setItem('movex_token', res.data.token);
       localStorage.setItem('movex_user', JSON.stringify(res.data.user));
+      
+      // Update app state with logged-in user
       setUser(res.data.user);
+      
+      // Redirect to dashboard
+      window.location.href = '/';
     } catch (err) {
       console.error('Login error:', err);
       if (err.response) {

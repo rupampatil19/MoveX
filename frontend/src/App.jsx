@@ -20,7 +20,7 @@ import ClanPage from './pages/ClanPage';
 import HowItWorksPage from './pages/HowItWorksPage';
 import QuestsPage from './pages/QuestsPage';
 import EventsPage from './pages/EventsPage';
-import MapPage from './pages/MapPage'; // NEW
+import MapPage from './pages/MapPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 
 function App() {
@@ -65,14 +65,14 @@ function App() {
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route path="/quests" element={<QuestsPage />} />
                   <Route path="/events" element={<EventsPage />} />
-                  <Route path="/map" element={<MapPage />} /> {/* UPDATED */}
+                  <Route path="/map" element={<MapPage />} />
+                  <Route path="/ar" element={<ARSection />} />   {/* AR route */}
                   <Route path="/leaderboard" element={<Leaderboard user={user} />} />
                   <Route path="/profile" element={<Profile user={user} logout={logout} />} />
                   <Route path="/settings" element={<Settings user={user} />} />
-                  <Route path="/ar" element={<ARSection />} />
-                  <Route path="/state-hub" element={<div className="text-center text-gray-400">State Hub coming soon</div>} />
-                  <Route path="/athlete" element={<div className="text-center text-gray-400">Athlete section coming soon</div>} />
-                  <Route path="/store" element={<div className="text-center text-gray-400">Store coming soon</div>} />
+                  <Route path="/state-hub" element={<div className="text-center text-gray-500">State Hub coming soon</div>} />
+                  <Route path="/athlete" element={<div className="text-center text-gray-500">Athlete section coming soon</div>} />
+                  <Route path="/store" element={<div className="text-center text-gray-500">Store coming soon</div>} />
                 </Routes>
               </DashboardLayout>
             ) : (
