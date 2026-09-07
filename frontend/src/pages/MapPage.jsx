@@ -7,10 +7,11 @@ import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { PUNE_REGIONS, getRegionLevel, getBuildingName, getBuildingEmoji } from '../data/regionConfig';
+import { PUNE_REGIONS, getRegionLevel, getHubImagePath, getHubName } from '../data/regionConfig';
+import { generateRegionPolygons, calculateCentroid } from '../utils/regionUtils';
 import 'leaflet/dist/leaflet.css';
 
-// Fix default Leaflet marker icon
+// Fix default Leaflet marker icon (not used for hubs)
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -18,112 +19,30 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-function createBuildingIcon(emoji) {
+// Circular Hub image only (no text) for map markers
+function createHubIcon(imagePath) {
   return L.divIcon({
-    className: 'building-marker',
-    html: `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:30px;background:rgba(0,0,0,0.55);border-radius:50%;border:2px solid #00CFFF;box-shadow:0 0 12px rgba(0,207,255,0.6);">${emoji}</div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
-    tooltipAnchor: [0, -22],
+    className: 'hub-marker',
+    html: `
+      <div style="
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid #00CFFF;
+        box-shadow: 0 0 10px rgba(0,207,255,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+      ">
+        <img src="${imagePath}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />
+      </div>
+    `,
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+    tooltipAnchor: [0, -30],
   });
-}
-
-// Projection helper (small area)
-const CENTER = { lat: 18.56, lng: 73.85 };
-function project(lat, lng) {
-  return { x: (lng - CENTER.lng) * Math.cos(CENTER.lat * Math.PI / 180), y: lat - CENTER.lat };
-}
-function unproject(x, y) {
-  return [y + CENTER.lat, x / Math.cos(CENTER.lat * Math.PI / 180) + CENTER.lng];
-}
-function angleOf(lat, lng) {
-  const p = project(lat, lng);
-  return Math.atan2(p.y, p.x);
-}
-// Average of two angles, handling circularity
-function midAngle(a, b) {
-  let diff = b - a;
-  if (diff < -Math.PI) diff += 2 * Math.PI;
-  if (diff > Math.PI) diff -= 2 * Math.PI;
-  return a + diff / 2;
-}
-
-// Generate non-overlapping wavy radial sectors.
-// The angular divisions are based on bisectors of adjacent region center angles,
-// ensuring shared radial boundaries and no overlaps.
-function generateRegionPolygons() {
-  // Sort region indices by angle around central point
-  const sortedIndices = [...PUNE_REGIONS.keys()].sort((i, j) => {
-    const r1 = PUNE_REGIONS[i];
-    const r2 = PUNE_REGIONS[j];
-    return angleOf(r1.center[0], r1.center[1]) - angleOf(r2.center[0], r2.center[1]);
-  });
-  const n = sortedIndices.length;
-  const polygons = {};
-  const OUTER_RADIUS = 0.15;
-
-  for (let k = 0; k < n; k++) {
-    const region = PUNE_REGIONS[sortedIndices[k]];
-    const prevRegion = PUNE_REGIONS[sortedIndices[(k - 1 + n) % n]];
-    const nextRegion = PUNE_REGIONS[sortedIndices[(k + 1) % n]];
-
-    const currAngle = angleOf(region.center[0], region.center[1]);
-    const prevAngle = angleOf(prevRegion.center[0], prevRegion.center[1]);
-    const nextAngle = angleOf(nextRegion.center[0], nextRegion.center[1]);
-
-    // Shared boundary angles (bisectors)
-    const startAngle = midAngle(prevAngle, currAngle);
-    const endAngle = midAngle(currAngle, nextAngle);
-
-    // Ensure proper angular ordering and handle wrap-around
-    let sectorStart = startAngle;
-    let sectorEnd = endAngle;
-    if (sectorEnd < sectorStart) sectorEnd += 2 * Math.PI;
-
-    const steps = 10;
-    const arcSteps = 20;
-    const points = [];
-
-    // Center point
-    points.push([CENTER.lat, CENTER.lng]);
-
-    // Wavy radial line from center to outer boundary at sectorStart
-    for (let s = 1; s <= steps; s++) {
-      const t = s / steps;
-      const r = OUTER_RADIUS * t;
-      const wave = Math.sin(t * Math.PI * 3) * 0.006;
-      const perpAngle = sectorStart + Math.PI / 2;
-      const x = Math.cos(sectorStart) * r + Math.cos(perpAngle) * wave;
-      const y = Math.sin(sectorStart) * r + Math.sin(perpAngle) * wave;
-      points.push(unproject(x, y));
-    }
-
-    // Outer arc from sectorStart to sectorEnd with waviness
-    for (let s = 1; s < arcSteps; s++) {
-      const t = s / arcSteps;
-      const angle = sectorStart + (sectorEnd - sectorStart) * t;
-      const outerWave = Math.sin(t * Math.PI * 5) * 0.005;
-      const r = OUTER_RADIUS + outerWave;
-      const x = Math.cos(angle) * r;
-      const y = Math.sin(angle) * r;
-      points.push(unproject(x, y));
-    }
-
-    // Wavy radial line from outer boundary back to center at sectorEnd
-    for (let s = steps; s >= 0; s--) {
-      const t = s / steps;
-      const r = OUTER_RADIUS * t;
-      const wave = Math.sin(t * Math.PI * 3 + 1) * 0.006;
-      const perpAngle = sectorEnd + Math.PI / 2;
-      const x = Math.cos(sectorEnd) * r + Math.cos(perpAngle) * wave;
-      const y = Math.sin(sectorEnd) * r + Math.sin(perpAngle) * wave;
-      points.push(unproject(x, y));
-    }
-
-    polygons[region.id] = points;
-  }
-
-  return polygons;
 }
 
 const MapPage = () => {
@@ -131,7 +50,14 @@ const MapPage = () => {
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const regionPolygons = useMemo(() => generateRegionPolygons(), []);
+  const regionPolygons = useMemo(() => generateRegionPolygons(PUNE_REGIONS), []);
+  const centroidCache = useMemo(() => {
+    const cache = {};
+    Object.entries(regionPolygons).forEach(([id, coords]) => {
+      cache[id] = calculateCentroid(coords);
+    });
+    return cache;
+  }, [regionPolygons]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -187,9 +113,10 @@ const MapPage = () => {
 
             const energy = getRegionEnergy(region.id);
             const level = getRegionLevel(energy);
-            const buildingName = getBuildingName(energy);
-            const buildingEmoji = getBuildingEmoji(energy);
+            const hubImage = getHubImagePath(level);
+            const hubName = getHubName(level);
             const isSelected = selectedRegion?.id === region.id;
+            const hubPosition = centroidCache[region.id];
 
             return (
               <div key={region.id}>
@@ -202,19 +129,19 @@ const MapPage = () => {
                     weight: isSelected ? 3 : 2,
                   }}
                   eventHandlers={{
-                    click: () => setSelectedRegion({ ...region, energy, level, buildingName, buildingEmoji }),
+                    click: () => setSelectedRegion({ ...region, energy, level, hubName, hubImage }),
                   }}
                 />
                 <Marker
-                  position={region.center}
-                  icon={createBuildingIcon(buildingEmoji)}
+                  position={hubPosition}
+                  icon={createHubIcon(hubImage)}
                   eventHandlers={{
-                    click: () => setSelectedRegion({ ...region, energy, level, buildingName, buildingEmoji }),
+                    click: () => setSelectedRegion({ ...region, energy, level, hubName, hubImage }),
                   }}
                 >
-                  <Tooltip direction="top" offset={[0, -22]} opacity={1}>
+                  <Tooltip direction="top" offset={[0, -30]} opacity={1}>
                     <span className="font-semibold">{region.id}</span><br />
-                    <span>Level {level} — {buildingName}</span>
+                    <span>Level {level} — {hubName}</span>
                   </Tooltip>
                 </Marker>
               </div>
@@ -222,13 +149,27 @@ const MapPage = () => {
           })}
         </MapContainer>
 
-        {/* Region Details Panel (bottom-left) */}
-        <div className="absolute bottom-4 left-4 bg-[#0B1F2A]/95 backdrop-blur text-white rounded-2xl p-4 shadow-xl w-72 md:w-80 max-h-[60vh] overflow-y-auto z-[1000]">
+        {/* Region Details Panel - bottom, responsive width, no overlap with legend */}
+        <div className="absolute bottom-4 left-3 right-3 mx-auto md:left-4 md:right-auto md:mx-0 bg-[#0B1F2A]/95 backdrop-blur text-white rounded-2xl p-4 shadow-xl w-auto md:w-80 max-h-[60vh] overflow-y-auto z-[1000]">
           {selectedRegion ? (
             <>
-              <h2 className="text-xl font-bold text-white">{selectedRegion.id}</h2>
-              <p className="text-sm text-[#7DD3FC] flex items-center gap-1 mt-1">
-                {selectedRegion.buildingEmoji} {selectedRegion.buildingName} • Level {selectedRegion.level}
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedRegion.hubImage}
+                  alt={selectedRegion.hubName}
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid #00CFFF',
+                    boxShadow: '0 0 8px rgba(0,207,255,0.4)',
+                  }}
+                />
+                <h2 className="text-xl font-bold text-white">{selectedRegion.id}</h2>
+              </div>
+              <p className="text-sm text-[#7DD3FC] mt-2">
+                {selectedRegion.hubName} • Level {selectedRegion.level}
               </p>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between text-gray-300">
@@ -245,20 +186,10 @@ const MapPage = () => {
                     }}
                   />
                 </div>
-                <div className="flex justify-between text-gray-300">
-                  <span>Progress</span>
-                  <span className="text-white">
-                    {selectedRegion.level >= 5 ? 'Max' : `${Math.min((selectedRegion.energy / (20000 * selectedRegion.level)) * 100, 100).toFixed(1)}%`}
-                  </span>
-                </div>
               </div>
               <div className="mt-4 flex gap-2">
-                <Link to="/leaderboard" className="flex-1 bg-[#188AD8] text-white text-center py-2 rounded-lg hover:bg-[#1a9ae0]">
-                  View Leaderboard
-                </Link>
-                <Link to="/quests" className="flex-1 bg-[#20C9A6] text-white text-center py-2 rounded-lg hover:bg-[#1ab897]">
-                  Challenges
-                </Link>
+                <Link to="/leaderboard" className="flex-1 bg-[#188AD8] text-white text-center py-2 rounded-lg">Leaderboard</Link>
+                <Link to="/quests" className="flex-1 bg-[#20C9A6] text-white text-center py-2 rounded-lg">Challenges</Link>
               </div>
             </>
           ) : (
@@ -266,25 +197,34 @@ const MapPage = () => {
           )}
         </div>
 
-        {/* Legend Panel (bottom-right) */}
-        <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-xl p-3 shadow-lg text-sm max-w-xs z-[1000]">
+        {/* Legend - top-right on mobile, bottom-right on md+ */}
+        <div className="absolute top-3 right-3 md:top-auto md:bottom-4 md:right-4 bg-white/90 rounded-xl p-2 sm:p-3 shadow-lg text-xs sm:text-sm z-[1000] max-w-[180px] sm:max-w-xs">
           <h3 className="font-semibold text-gray-800 mb-1">Regions</h3>
-          <ul className="space-y-1">
-            {PUNE_REGIONS.map(r => (
-              <li key={r.id} className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: r.color }}></span>
-                <span className="text-gray-700">{r.id}</span>
-              </li>
+          {PUNE_REGIONS.map(r => (
+            <div key={r.id} className="flex items-center gap-1 sm:gap-2">
+              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: r.color }}></span>
+              <span className="text-gray-700">{r.id}</span>
+            </div>
+          ))}
+          <h3 className="font-semibold text-gray-800 mt-2 mb-1">Hub Levels</h3>
+          <div className="space-y-1 sm:space-y-2">
+            {[1, 2, 3, 4, 5].map(level => (
+              <div key={level} className="flex items-center gap-1 sm:gap-2">
+                <img
+                  src={getHubImagePath(level)}
+                  alt={getHubName(level)}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1px solid #00CFFF',
+                  }}
+                />
+                <span className="text-gray-700">{getHubName(level)}</span>
+              </div>
             ))}
-          </ul>
-          <h3 className="font-semibold text-gray-800 mt-2 mb-1">Regional Levels</h3>
-          <ul className="space-y-1 text-gray-600">
-            <li>⚡ Energy Spark</li>
-            <li>👥 Community Rise</li>
-            <li>🏠 Tide Hut</li>
-            <li>🏰 Ocean Citadel</li>
-            <li>👑 Poseidon's Hub</li>
-          </ul>
+          </div>
         </div>
       </div>
     </motion.div>
