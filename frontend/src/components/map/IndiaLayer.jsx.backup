@@ -1,0 +1,57 @@
+import { useEffect, useState } from 'react';
+import { useMap } from 'react-leaflet';
+import L from 'leaflet';
+
+/**
+ * Renders India state boundaries from /geojson/india-states.geojson.
+ * Uses NAME_1 for state names (GADM format).
+ */
+const IndiaLayer = ({ onStateClick }) => {
+  const map = useMap();
+  const [geoData, setGeoData] = useState(null);
+
+  useEffect(() => {
+    fetch('/geojson/india-states.geojson')
+      .then((r) => {
+        if (!r.ok) throw new Error('GeoJSON load failed: ' + r.status);
+        return r.json();
+      })
+      .then((data) => {
+        console.log('IndiaLayer: loaded', data.features?.length, 'features');
+        setGeoData(data);
+      })
+      .catch((err) => console.error('IndiaLayer:', err));
+  }, []);
+
+  useEffect(() => {
+    if (!geoData) return;
+
+    const layer = L.geoJSON(geoData, {
+      style: () => ({
+        color: '#2563EB',
+        weight: 1,
+        fillColor: '#2563EB',
+        fillOpacity: 0.08,
+      }),
+      onEachFeature: (feature, lyr) => {
+        const name =
+          feature.properties?.NAME_1 ||
+          feature.properties?.ST_NM ||
+          feature.properties?.name ||
+          'Unknown';
+        lyr.on({
+          mouseover: (e) => e.target.setStyle({ fillOpacity: 0.25, weight: 2 }),
+          mouseout: (e) => e.target.setStyle({ fillOpacity: 0.08, weight: 1 }),
+          click: () => onStateClick?.(name),
+        });
+        lyr.bindTooltip(name, { sticky: true });
+      },
+    }).addTo(map);
+
+    return () => layer.remove();
+  }, [geoData, map, onStateClick]);
+
+  return null;
+};
+
+export default IndiaLayer;

@@ -1,0 +1,435 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import API from '../api';
+import { motion } from 'framer-motion';
+import { Trophy, Loader2, MapPin } from 'lucide-react';
+import {
+  getCityForRegion,
+  getCityById,
+  getStateById,
+  getRegionsForCity,
+  getCitiesForState,
+} from '../data/geoHierarchy';
+
+// Build the geographic context from URL params, with fallback to user's region
+function useGeoContext(user, searchParams) {
+  return useMemo(() => {
+    const scope = searchParams.get('scope');
+    const regionId = searchParams.get('regionId');
+    const cityId = searchParams.get('cityId');
+    const stateId = searchParams.get('stateId');
+
+    if (scope === 'global') return { level: 'global' };
+
+    if (scope === 'state' && stateId) {
+      return { level: 'state', stateId, cityId: null, regionId: null };
+    }
+
+    if (scope === 'city' && cityId) {
+      const city = getCityById(cityId);
+      return {
+        level: 'city',
+        stateId: city?.stateId || null,
+        cityId,
+        regionId: null,
+      };
+    }
+
+    if (scope === 'region' && regionId) {
+      const city = getCityForRegion(regionId);
+      return {
+        level: 'region',
+        stateId: city?.stateId || null,
+        cityId: city?.id || null,
+        regionId,
+      };
+    }
+
+    // Fallback: user's own region
+    if (user?.region) {
+      const city = getCityForRegion(user.region);
+      if (city) {
+        return {
+          level: 'region',
+          stateId: city.stateId,
+          cityId: city.id,
+          regionId: user.region,
+        };
+      }
+    }
+
+    return { level: 'global' };
+  }, [searchParams, user]);
+}
+
+function useTitleAndBreadcrumb(context) {
+  return useMemo(() => {
+    const { level, stateId, cityId, regionId } = context;
+
+    if (level === 'global') {
+      return { title: 'Global Leaderboard', breadcrumb: 'India' };
+    }
+
+    const state = stateId ? getStateById(stateId) : null;
+    const city = cityId ? getCityById(cityId) : null;
+
+    if (level === 'region') {
+      return {
+        title: `${regionId} Leaderboard`,
+        breadcrumb: [city?.name, state?.name].filter(Boolean).join(' • '),
+      };
+    }
+    if (level === 'city') {
+      return {
+        title: `${city?.name || 'City'} Leaderboard`,
+        breadcrumb: state?.name || '',
+      };
+    }
+    if (level === 'state') {
+      return {
+        title: `${state?.name || 'State'} Leaderboard`,
+        breadcrumb: 'India',
+      };
+    }
+    return { title: 'Leaderboard', breadcrumb: '' };
+  }, [context]);
+}
+
+const Leaderboard = ({ user }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const context = useGeoContext(user, searchParams);
+  const { title, breadcrumb } = useTitleAndBreadcrumb(context);
+
+  const [tab, setTab] = useState('athletes'); // 'athletes' | 'regions' | 'global'
+  const [athletes, setAthletes] = useState([]);
+  const [regionsRanked, setRegionsRanked] = useState([]);
+  const [globalLeaders, setGlobalLeaders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Build query string for API calls
+  const contextQuery = useMemo(() => {
+    const q = new URLSearchParams();
+    q.set('scope', context.level);
+    if (context.stateId) q.set('stateId', context.stateId);
+    if (context.cityId) q.set('cityId', context.cityId);
+    if (context.regionId) q.set('regionId', context.regionId);
+    return q.toString();
+  }, [context]);
+
+  // Load data when tab or context changes
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (tab === 'athletes') {
+          const res = await API.get(`/leaderboard?${contextQuery}`);
+          if (alive) setAthletes(res.data || []);
+        } else if (tab === 'regions') {
+          const res = await API.get(`/leaderboard/regions?${contextQuery}`);
+          if (alive) setRegionsRanked(res.data || []);
+        } else if (tab === 'global') {
+          const res = await API.get('/leaderboard?scope=global');
+          if (alive) setGlobalLeaders(res.data || []);
+        }
+      } catch (err) {
+        console.error('Leaderboard fetch error:', err);
+        if (alive) setError('Unable to load leaderboard data.');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [tab, contextQuery]);
+
+  // When context changes, keep user on a sensible tab
+  useEffect(() => {
+    if (context.level === 'global' && tab !== 'global') setTab('global');
+    else if (context.level !== 'global' && tab === 'global') setTab('athletes');
+  }, [context.level]);
+
+  // Sub-entity selector (regions within city, cities within state)
+  const scopeSelector = useMemo(() => {
+    if (context.level === 'region') {
+      const regions = context.cityId ? getRegionsForCity(context.cityId) : [];
+      return {
+        label: 'Region',
+        items: regions,
+        current: context.regionId,
+        onPick: (rid) => {
+          setSearchParams({
+            scope: 'region',
+            regionId: rid,
+            cityId: context.cityId,
+            stateId: context.stateId,
+          });
+        },
+      };
+    }
+    if (context.level === 'city') {
+      const regions = getRegionsForCity(context.cityId);
+      return {
+        label: 'Region',
+        items: regions,
+        current: null,
+        onPick: (rid) => {
+          setSearchParams({
+            scope: 'region',
+            regionId: rid,
+            cityId: context.cityId,
+            stateId: context.stateId,
+          });
+        },
+      };
+    }
+    if (context.level === 'state') {
+      const cities = getCitiesForState(context.stateId);
+      return {
+        label: 'City',
+        items: cities,
+        current: null,
+        onPick: (cid) => {
+          setSearchParams({
+            scope: 'city',
+            cityId: cid,
+            stateId: context.stateId,
+          });
+        },
+      };
+    }
+    return null;
+  }, [context, setSearchParams]);
+
+  if (loading && athletes.length === 0 && globalLeaders.length === 0 && regionsRanked.length === 0) {
+    return (
+      <div className="p-6 text-gray-700 flex items-center gap-2">
+        <Loader2 className="w-6 h-6 text-blue-500 animate-spin" /> Loading…
+      </div>
+    );
+  }
+
+  const showRegionColumn = context.level !== 'region';
+  const showCityColumnInRegions = context.level === 'state';
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5 pb-24 md:pb-6">
+      {/* Header — dynamic title + breadcrumb */}
+      <div>
+        {breadcrumb && (
+          <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+            <MapPin className="w-3 h-3" />
+            <span>{breadcrumb}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <Trophy className="w-8 h-8 text-[#2563EB]" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{title}</h1>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {context.level !== 'global' && (
+          <button
+            onClick={() => setTab('athletes')}
+            className={`px-4 py-2 rounded-full transition text-sm ${
+              tab === 'athletes'
+                ? 'bg-[#2563EB] text-white'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            Top Athletes
+          </button>
+        )}
+        {context.level !== 'global' && (
+          <button
+            onClick={() => setTab('regions')}
+            className={`px-4 py-2 rounded-full transition text-sm ${
+              tab === 'regions'
+                ? 'bg-[#2563EB] text-white'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            Regions Ranking
+          </button>
+        )}
+        <button
+          onClick={() => setTab('global')}
+          className={`px-4 py-2 rounded-full transition text-sm ${
+            tab === 'global'
+              ? 'bg-[#2563EB] text-white'
+              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          Global
+        </button>
+      </div>
+
+      {/* Sub-entity pills */}
+      {scopeSelector && scopeSelector.items.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs text-gray-500 self-center mr-1">{scopeSelector.label}:</span>
+          {scopeSelector.items.map((item) => {
+            const isCurrent = scopeSelector.current === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => scopeSelector.onPick(item.id)}
+                className={`px-3 py-1 rounded-full text-xs transition ${
+                  isCurrent
+                    ? 'bg-[#2563EB] text-white'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                {item.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      {/* Top Athletes — sorted by Level, then Energy */}
+      {tab === 'athletes' && (
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead>
+              <tr className="bg-[#2563EB] text-white">
+                <th className="p-3 text-left">Rank</th>
+                <th className="p-3 text-left">Name</th>
+                {showRegionColumn && <th className="p-3 text-left">Region</th>}
+                <th className="p-3 text-center">Level</th>
+                <th className="p-3 text-center">Energy</th>
+                <th className="p-3 text-center">XP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {athletes.map((u, i) => (
+                <tr
+                  key={u._id}
+                  className={`border-t border-gray-100 ${
+                    u._id === user?.id ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <td className="p-3 text-gray-700">{i + 1}</td>
+                  <td className="p-3 text-gray-800 font-medium">{u.name}</td>
+                  {showRegionColumn && <td className="p-3 text-gray-600">{u.region}</td>}
+                  <td className="p-3 text-center text-gray-800 font-semibold">{u.level || 1}</td>
+                  <td className="p-3 text-center text-yellow-600 font-medium">
+                    {(u.energy || 0).toLocaleString()}
+                  </td>
+                  <td className="p-3 text-center text-gray-700">{u.xp || 0}</td>
+                </tr>
+              ))}
+              {athletes.length === 0 && (
+                <tr>
+                  <td colSpan={showRegionColumn ? 6 : 5} className="p-4 text-center text-gray-500">
+                    No athletes in this area yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Regions Ranking */}
+      {tab === 'regions' && (
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#2563EB] text-white">
+                <th className="p-3 text-left">Rank</th>
+                <th className="p-3 text-left">Region</th>
+                {showCityColumnInRegions && (
+                  <th className="p-3 text-left">City</th>
+                )}
+                <th className="p-3 text-center">Level</th>
+                <th className="p-3 text-center">Total Energy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {regionsRanked.map((r, i) => (
+                <tr key={r.region || r.city || r.id || i} className="border-t border-gray-100">
+                  <td className="p-3 text-gray-700">{i + 1}</td>
+                  <td className="p-3 text-gray-800 font-medium">
+                    {r.region || r.name}
+                  </td>
+                  {showCityColumnInRegions && (
+                    <td className="p-3 text-gray-600">{r.cityName || r.city || '—'}</td>
+                  )}
+                  <td className="p-3 text-center text-gray-800">
+                    {r.powerStationLevel || r.communityLevel || 1}
+                  </td>
+                  <td className="p-3 text-center text-gray-700">
+                    {(r.totalEnergy || 0).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+              {regionsRanked.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={showCityColumnInRegions ? 5 : 4}
+                    className="p-4 text-center text-gray-500"
+                  >
+                    No data available.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Global */}
+      {tab === 'global' && (
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead>
+              <tr className="bg-[#2563EB] text-white">
+                <th className="p-3 text-left">Rank</th>
+                <th className="p-3 text-left">Name</th>
+                <th className="p-3 text-left">Region</th>
+                <th className="p-3 text-center">Level</th>
+                <th className="p-3 text-center">Distance (km)</th>
+                <th className="p-3 text-center">XP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {globalLeaders.map((u, i) => (
+                <tr
+                  key={u._id}
+                  className={`border-t border-gray-100 ${
+                    u._id === user?.id ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <td className="p-3 text-gray-700">{i + 1}</td>
+                  <td className="p-3 text-gray-800 font-medium">{u.name}</td>
+                  <td className="p-3 text-gray-600">{u.region}</td>
+                  <td className="p-3 text-center text-gray-800 font-semibold">{u.level || 1}</td>
+                  <td className="p-3 text-center text-gray-700">{u.totalDistance || 0}</td>
+                  <td className="p-3 text-center text-gray-700">{u.xp || 0}</td>
+                </tr>
+              ))}
+              {globalLeaders.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-4 text-center text-gray-500">
+                    No global data yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+export default Leaderboard;

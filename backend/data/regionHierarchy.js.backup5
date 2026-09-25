@@ -1,0 +1,68 @@
+// ============================================================
+// MOVEX — Backend Region Hierarchy
+// Mirror of frontend/src/data/nationalGeoConfig.js
+// Keep both in sync when adding new cities.
+// ============================================================
+
+const REGION_HIERARCHY = {
+  // ---- Pune (Maharashtra) ----
+  Kothrud:         { city: 'pune', state: 'MH', country: 'IN' },
+  Hinjewadi:       { city: 'pune', state: 'MH', country: 'IN' },
+  Baner:           { city: 'pune', state: 'MH', country: 'IN' },
+  'Shivaji Nagar': { city: 'pune', state: 'MH', country: 'IN' },
+  'Viman Nagar':   { city: 'pune', state: 'MH', country: 'IN' },
+  Hadapsar:        { city: 'pune', state: 'MH', country: 'IN' },
+  Pimpri:          { city: 'pune', state: 'MH', country: 'IN' },
+
+  // ---- Bengaluru (Karnataka) ----
+  Koramangala:     { city: 'bengaluru', state: 'KA', country: 'IN' },
+  Whitefield:      { city: 'bengaluru', state: 'KA', country: 'IN' },
+  Indiranagar:     { city: 'bengaluru', state: 'KA', country: 'IN' },
+  'HSR Layout':    { city: 'bengaluru', state: 'KA', country: 'IN' },
+  Jayanagar:       { city: 'bengaluru', state: 'KA', country: 'IN' },
+};
+
+const CITY_HIERARCHY = {
+  pune:      { state: 'MH', country: 'IN', name: 'Pune' },
+  bengaluru: { state: 'KA', country: 'IN', name: 'Bengaluru' },
+};
+
+const STATE_HIERARCHY = {
+  MH: { country: 'IN', name: 'Maharashtra' },
+  KA: { country: 'IN', name: 'Karnataka' },
+};
+
+function getHierarchy(regionId) {
+  return REGION_HIERARCHY[regionId] || { city: null, state: null, country: 'IN' };
+}
+
+function getCityInfo(cityId) {
+  return CITY_HIERARCHY[cityId] || null;
+}
+
+function getStateInfo(stateId) {
+  return STATE_HIERARCHY[stateId] || null;
+}
+
+function getRegionsForCity(cityId) {
+  return Object.entries(REGION_HIERARCHY)
+    .filter(([, h]) => h.city === cityId)
+    .map(([regionId]) => regionId);
+}
+
+function getRegionsForState(stateId) {
+  return Object.entries(REGION_HIERARCHY)
+    .filter(([, h]) => h.state === stateId)
+    .map(([regionId]) => regionId);
+}
+
+module.exports = {
+  REGION_HIERARCHY,
+  CITY_HIERARCHY,
+  STATE_HIERARCHY,
+  getHierarchy,
+  getCityInfo,
+  getStateInfo,
+  getRegionsForCity,
+  getRegionsForState,
+};

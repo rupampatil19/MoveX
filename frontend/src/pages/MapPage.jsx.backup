@@ -1,0 +1,401 @@
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { MapContainer, TileLayer, Polygon, Marker, Tooltip, useMap } from 'react-leaflet';
+import { Link } from 'react-router-dom';
+import API from '../api';
+import { motion } from 'framer-motion';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import {
+  PUNE_REGIONS,
+  BENGALURU_REGIONS,
+  getRegionLevel,
+  getHubImagePath,
+  getHubName,
+} from '../data/regionConfig';
+import { generateRegionPolygons, calculateCentroid } from '../utils/regionUtils';
+import MapZoomWatcher from '../components/map/MapZoomWatcher';
+import IndiaLayer from '../components/map/IndiaLayer';
+import MaharashtraLayer from '../components/map/MaharashtraLayer';
+import 'leaflet/dist/leaflet.css';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+// ------------------------------------------------------------
+// CITY CATALOG — add new cities here
+// ------------------------------------------------------------
+const CITIES = {
+  pune: {
+    id: 'pune',
+    name: 'Pune',
+    state: 'Maharashtra',
+    regions: PUNE_REGIONS,
+    center: [18.56, 73.85],
+    polygonCenter: { lat: 18.56, lng: 73.85 },
+    zoom: 12,
+  },
+  bengaluru: {
+    id: 'bengaluru',
+    name: 'Bengaluru',
+    state: 'Karnataka',
+    regions: BENGALURU_REGIONS,
+    center: [12.9716, 77.5946],
+    polygonCenter: { lat: 12.9716, lng: 77.5946 },
+    zoom: 12,
+  },
+};
+
+function createHubIcon(imagePath) {
+  return L.divIcon({
+    className: 'hub-marker',
+    html: `
+      <div style="
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid #00CFFF;
+        box-shadow: 0 0 10px rgba(0,207,255,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+      ">
+        <img src="${imagePath}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />
+      </div>
+    `,
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+    tooltipAnchor: [0, -30],
+  });
+}
+
+function MapController({ target }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!target) return;
+    map.flyTo(target.center, target.zoom, { duration: 1.2 });
+  }, [map, target]);
+  return null;
+}
+
+const MapPage = () => {
+  const [regionData, setRegionData] = useState([]);
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [zoom, setZoom] = useState(12);
+  const [flyTarget, setFlyTarget] = useState(null);
+  const [selectedCity, setSelectedCity] = useState('pune');
+
+  const city = CITIES[selectedCity];
+
+  // Polygons for the current city
+  const regionPolygons = useMemo(
+    () => generateRegionPolygons(city.regions, city.polygonCenter),
+    [city]
+  );
+
+  const centroidCache = useMemo(() => {
+    const cache = {};
+    Object.entries(regionPolygons).forEach(([id, coords]) => {
+      cache[id] = calculateCentroid(coords);
+    });
+    return cache;
+  }, [regionPolygons]);
+
+  const handleZoomChange = useCallback((z) => setZoom(z), []);
+
+  // Layer visibility
+  const showIndia = zoom <= 6;
+  const showMaharashtra = zoom >= 7 && zoom <= 8;
+  const showRegions = zoom >= 9;
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRegions();
+  }, []);
+
+  const fetchRegions = async () => {
+    try {
+      const res = await API.get('/community/all');
+      setRegionData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRegionEnergy = (regionId) => {
+    const data = regionData.find((r) => r.region === regionId);
+    return data?.totalEnergy || 0;
+  };
+
+  const switchCity = (cityId) => {
+    if (cityId === selectedCity) return;
+    setSelectedCity(cityId);
+    setSelectedRegion(null);
+    const target = CITIES[cityId];
+    setFlyTarget({ center: target.center, zoom: target.zoom });
+  };
+
+  const goToIndia = () => setFlyTarget({ center: [22.0, 79.0], zoom: 5 });
+  const goToState = () => {
+    const stateCenter = selectedCity === 'bengaluru' ? [15.3173, 75.7139] : [19.75, 75.7];
+    setFlyTarget({ center: stateCenter, zoom: 7 });
+  };
+  const goToCity = () => setFlyTarget({ center: city.center, zoom: city.zoom });
+
+  if (loading) return <div className="p-6 text-gray-700">Loading map...</div>;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+      <h1 className="text-3xl font-bold text-gray-800">MoveX Living Map</h1>
+      <p className="text-gray-500">
+        Zoom out to see India → States. Zoom in to see city regions and their Hubs.
+      </p>
+
+      {/* City tabs */}
+      <div className="flex flex-wrap gap-2">
+        {Object.values(CITIES).map((c) => (
+          <button
+            key={c.id}
+            onClick={() => switchCity(c.id)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+              selectedCity === c.id
+                ? 'bg-[#2563EB] text-white'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            {c.name}
+          </button>
+        ))}
+        <span className="mx-2 self-center text-gray-300">|</span>
+        <button
+          onClick={goToIndia}
+          className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700"
+        >
+          🇮🇳 India
+        </button>
+        <button
+          onClick={goToState}
+          className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700"
+        >
+          {city.state}
+        </button>
+        <button
+          onClick={goToCity}
+          className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700"
+        >
+          {city.name}
+        </button>
+      </div>
+
+      <div className="h-[75vh] rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative">
+        <MapContainer center={[18.56, 73.85]} zoom={12} style={{ height: '100%', width: '100%' }}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+
+          <MapZoomWatcher onZoomChange={handleZoomChange} />
+          <MapController target={flyTarget} />
+
+          {showIndia && (
+            <IndiaLayer
+              onStateClick={(stateName) => {
+                const lower = stateName.toLowerCase();
+                if (lower === 'maharashtra') {
+                  switchCity('pune');
+                  setFlyTarget({ center: [19.75, 75.7], zoom: 7 });
+                } else if (lower === 'karnataka') {
+                  switchCity('bengaluru');
+                  setFlyTarget({ center: [15.3173, 75.7139], zoom: 7 });
+                }
+              }}
+            />
+          )}
+
+          {showMaharashtra && (
+            <MaharashtraLayer
+              onCityClick={(cityName) => {
+                if (cityName === 'Pune') {
+                  switchCity('pune');
+                  setFlyTarget({ center: CITIES.pune.center, zoom: 12 });
+                } else if (cityName === 'Bengaluru') {
+                  switchCity('bengaluru');
+                  setFlyTarget({ center: CITIES.bengaluru.center, zoom: 12 });
+                }
+              }}
+            />
+          )}
+
+          {showRegions &&
+            city.regions.map((region) => {
+              const polygonCoords = regionPolygons[region.id];
+              if (!polygonCoords || polygonCoords.length < 3) return null;
+
+              const energy = getRegionEnergy(region.id);
+              const level = getRegionLevel(energy);
+              const hubImage = getHubImagePath(level);
+              const hubName = getHubName(level);
+              const isSelected = selectedRegion?.id === region.id;
+              const hubPosition = centroidCache[region.id];
+
+              return (
+                <div key={region.id}>
+                  <Polygon
+                    positions={polygonCoords}
+                    pathOptions={{
+                      color: region.color,
+                      fillColor: region.color,
+                      fillOpacity: isSelected ? 0.4 : 0.2,
+                      weight: isSelected ? 3 : 2,
+                    }}
+                    eventHandlers={{
+                      click: () =>
+                        setSelectedRegion({ ...region, energy, level, hubName, hubImage }),
+                    }}
+                  />
+                  <Marker
+                    position={hubPosition}
+                    icon={createHubIcon(hubImage)}
+                    eventHandlers={{
+                      click: () =>
+                        setSelectedRegion({ ...region, energy, level, hubName, hubImage }),
+                    }}
+                  >
+                    <Tooltip direction="top" offset={[0, -30]} opacity={1}>
+                      <span className="font-semibold">{region.id}</span>
+                      <br />
+                      <span>
+                        Level {level} — {hubName}
+                      </span>
+                    </Tooltip>
+                  </Marker>
+                </div>
+              );
+            })}
+        </MapContainer>
+
+        {/* Region Details Panel */}
+        <div className="absolute bottom-4 left-3 right-3 mx-auto md:left-4 md:right-auto md:mx-0 bg-[#0B1F2A]/95 backdrop-blur text-white rounded-2xl p-4 shadow-xl w-auto md:w-80 max-h-[60vh] overflow-y-auto z-[1000]">
+          {selectedRegion ? (
+            <>
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedRegion.hubImage}
+                  alt={selectedRegion.hubName}
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid #00CFFF',
+                    boxShadow: '0 0 8px rgba(0,207,255,0.4)',
+                  }}
+                />
+                <h2 className="text-xl font-bold text-white">{selectedRegion.id}</h2>
+              </div>
+              <p className="text-sm text-[#7DD3FC] mt-2">
+                {selectedRegion.hubName} • Level {selectedRegion.level}
+              </p>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between text-gray-300">
+                  <span>Regional Energy</span>
+                  <span className="font-medium text-white">
+                    {selectedRegion.energy.toLocaleString()} /{' '}
+                    {selectedRegion.level >= 5 ? 'Max' : 20000 * selectedRegion.level}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-[#20C9A6] h-2 rounded-full"
+                    style={{
+                      width: `${
+                        selectedRegion.level >= 5
+                          ? 100
+                          : Math.min(
+                              (selectedRegion.energy / (20000 * selectedRegion.level)) * 100,
+                              100
+                            )
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Link
+                  to="/leaderboard"
+                  className="flex-1 bg-[#188AD8] text-white text-center py-2 rounded-lg"
+                >
+                  Leaderboard
+                </Link>
+                <Link
+                  to="/quests"
+                  className="flex-1 bg-[#20C9A6] text-white text-center py-2 rounded-lg"
+                >
+                  Challenges
+                </Link>
+              </div>
+            </>
+          ) : (
+            <p className="text-gray-300">
+              {showRegions
+                ? `Select a region in ${city.name} to see details.`
+                : 'Zoom in to see regions.'}
+            </p>
+          )}
+        </div>
+
+        {/* Legend — adapts to current city */}
+        {showRegions && (
+          <div className="absolute top-3 right-3 md:top-auto md:bottom-4 md:right-4 bg-white/90 rounded-xl p-2 sm:p-3 shadow-lg text-xs sm:text-sm z-[1000] max-w-[180px] sm:max-w-xs">
+            <h3 className="font-semibold text-gray-800 mb-1">{city.name} Regions</h3>
+            {city.regions.map((r) => (
+              <div key={r.id} className="flex items-center gap-1 sm:gap-2">
+                <span
+                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
+                  style={{ backgroundColor: r.color }}
+                ></span>
+                <span className="text-gray-700">{r.id}</span>
+              </div>
+            ))}
+            <h3 className="font-semibold text-gray-800 mt-2 mb-1">Hub Levels</h3>
+            <div className="space-y-1 sm:space-y-2">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <div key={level} className="flex items-center gap-1 sm:gap-2">
+                  <img
+                    src={getHubImagePath(level)}
+                    alt={getHubName(level)}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '1px solid #00CFFF',
+                    }}
+                  />
+                  <span className="text-gray-700">{getHubName(level)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+export default MapPage;

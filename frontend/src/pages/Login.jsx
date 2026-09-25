@@ -18,6 +18,7 @@ const Login = ({ setUser }) => {
       // Store token and user data in localStorage
       localStorage.setItem('movex_token', res.data.token);
       localStorage.setItem('movex_user', JSON.stringify(res.data.user));
+      window.dispatchEvent(new CustomEvent('auth:changed'));
       
       // Update app state with logged-in user
       setUser(res.data.user);

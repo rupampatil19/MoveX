@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../api';
 import { motion } from 'framer-motion';
-import { Zap, Trophy, Gift, Clock, ChevronRight, CheckCircle2, Lock } from 'lucide-react';
+import { Zap, Trophy, Gift, Clock, ChevronRight } from 'lucide-react';
 
 const categories = ['ALL', 'DAILY', 'WEEKLY', 'COMMUNITY', 'REGIONAL', 'ATHLETE'];
 
@@ -43,25 +43,33 @@ const QuestsPage = () => {
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      {/* Hero */}
-      <div className="bg-blue-700 text-white rounded-3xl p-6 md:p-8 shadow-sm">
-        <h1 className="text-3xl md:text-4xl font-bold">MoveX Quests & Community Challenges</h1>
-        <p className="text-blue-100 mt-2">Complete daily movement targets, weekly milestones, community goals and regional challenges to unlock Energy, Trophies, XP and rewards.</p>
-        <button className="mt-4 bg-white text-blue-800 font-semibold px-5 py-2 rounded-full hover:bg-blue-50 transition">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="max-w-6xl mx-auto px-4 pt-2 pb-28 space-y-5"
+    >
+      {/* Hero — compact on mobile */}
+      <div className="bg-blue-700 text-white rounded-3xl p-5 sm:p-6 md:p-8 shadow-sm">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">
+          MoveX Quests &amp; Community Challenges
+        </h1>
+        <p className="text-sm sm:text-base text-blue-100 mt-2">
+          Complete daily movement targets, weekly milestones, community goals and regional challenges to unlock Energy, Trophies, XP and rewards.
+        </p>
+        <button className="mt-3 sm:mt-4 bg-white text-blue-800 font-semibold px-4 sm:px-5 py-2 rounded-full hover:bg-blue-50 transition text-sm sm:text-base">
           ⚡ Start Quest Activity
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
+      {/* Filters — horizontal scroll only here, not the page */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}
-            className={`px-4 py-2 rounded-full whitespace-nowrap transition ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full whitespace-nowrap text-xs sm:text-sm font-medium transition shrink-0 ${
               filter === cat
-                ? 'bg-blue-500 text-white'
+                ? 'bg-[#2563EB] text-white'
                 : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
             }`}
           >
@@ -74,7 +82,7 @@ const QuestsPage = () => {
       {filteredQuests.length === 0 ? (
         <div className="text-center text-gray-500 py-8">No quests found for this category.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
           {filteredQuests.map(uq => {
             const quest = uq.questId;
             const progressPercent = quest.target > 0 ? Math.min((uq.progress / quest.target) * 100, 100) : 0;
@@ -92,80 +100,104 @@ const QuestsPage = () => {
             if (isExpired) statusBorder = 'border-red-200';
 
             return (
-              <div key={uq._id} className={`bg-white border ${statusBorder} rounded-2xl p-5 shadow-sm`}>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">{quest.category}</span>
+              <div
+                key={uq._id}
+                className={`bg-white border ${statusBorder} rounded-2xl p-3 sm:p-4 md:p-5 shadow-sm flex flex-col h-full`}
+              >
+                {/* Header row: category + time */}
+                <div className="flex justify-between items-start gap-1 mb-2">
+                  <span className="inline-block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#2563EB] bg-blue-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
+                    {quest.category}
+                  </span>
                   {timeRemaining > 0 && !isClaimed && !isExpired && (
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {daysLeft > 0 ? `${daysLeft}d` : `${hoursLeft}h`} left
+                    <span className="text-[9px] sm:text-[10px] text-gray-500 flex items-center gap-0.5 whitespace-nowrap">
+                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                      {daysLeft > 0 ? `${daysLeft}d` : `${hoursLeft}h`}
                     </span>
                   )}
-                  {isClaimed && <span className="text-xs text-gray-400">CLAIMED</span>}
-                  {isExpired && <span className="text-xs text-red-500">EXPIRED</span>}
+                  {isClaimed && (
+                    <span className="text-[9px] sm:text-[10px] text-gray-400">CLAIMED</span>
+                  )}
+                  {isExpired && (
+                    <span className="text-[9px] sm:text-[10px] text-red-500">EXPIRED</span>
+                  )}
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-800 mb-1">{quest.title}</h3>
-                <p className="text-gray-500 text-sm mb-3">{quest.description}</p>
+                {/* Title */}
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+                  {quest.title}
+                </h3>
 
-                <div className="mb-3">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                {/* Description */}
+                <p className="text-[11px] sm:text-xs md:text-sm text-gray-600 mt-1 line-clamp-2 flex-1">
+                  {quest.description}
+                </p>
+
+                {/* Progress */}
+                <div className="mt-2">
+                  <div className="flex justify-between text-[10px] sm:text-xs text-gray-600 mb-1">
                     <span>
                       {uq.progress} / {quest.target}{' '}
                       {quest.metric === 'duration_minutes' ? 'min' :
                        quest.metric === 'distance_km' ? 'km' :
-                       quest.metric === 'activities' ? 'activities' :
-                       quest.metric === 'energy' ? 'Energy' : 'units'}
+                       quest.metric === 'activities' ? 'acts' :
+                       quest.metric === 'energy' ? 'E' : ''}
                     </span>
-                    <span>{Math.round(progressPercent)}%</span>
+                    <span className="font-semibold">{Math.round(progressPercent)}%</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 sm:h-2">
                     <div
-                      className={`h-2 rounded-full ${isCompleted ? 'bg-blue-500' : 'bg-blue-400'}`}
+                      className={`h-1.5 sm:h-2 rounded-full transition-all ${isCompleted ? 'bg-blue-500' : 'bg-blue-400'}`}
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
                 </div>
 
-                {/* Rewards */}
-                <div className="flex items-center gap-3 mb-4 text-sm">
+                {/* Rewards — compact chips like RewardCard */}
+                <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-2">
                   {quest.reward.energy > 0 && (
-                    <span className="text-yellow-600 flex items-center gap-1">
-                      <Zap className="w-4 h-4" /> +{quest.reward.energy} Energy
+                    <span className="text-[10px] sm:text-xs font-semibold text-yellow-600 flex items-center gap-0.5">
+                      <Zap className="w-3 h-3" /> +{quest.reward.energy}
                     </span>
                   )}
                   {quest.reward.xp > 0 && (
-                    <span className="text-purple-600 flex items-center gap-1">
-                      <Trophy className="w-4 h-4" /> +{quest.reward.xp} XP
+                    <span className="text-[10px] sm:text-xs font-semibold text-purple-600 flex items-center gap-0.5">
+                      <Trophy className="w-3 h-3" /> +{quest.reward.xp}
                     </span>
                   )}
                   {quest.reward.item && (
-                    <span className="text-blue-600 flex items-center gap-1">
-                      <Gift className="w-4 h-4" /> {quest.reward.item}
+                    <span className="text-[10px] sm:text-xs font-semibold text-blue-600 flex items-center gap-0.5">
+                      <Gift className="w-3 h-3" /> {quest.reward.item}
                     </span>
                   )}
                 </div>
 
                 {/* Action */}
-                {isClaimed ? (
-                  <div className="text-center text-gray-400 py-2">✓ Claimed</div>
-                ) : isCompleted ? (
-                  <button
-                    onClick={() => handleClaim(uq._id)}
-                    className="w-full bg-blue-500 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
-                  >
-                    Claim Reward
-                  </button>
-                ) : isExpired ? (
-                  <div className="text-center text-red-500 py-2">Quest Expired</div>
-                ) : (
-                  <button
-                    onClick={() => {/* navigate to start activity */}}
-                    className="w-full bg-blue-500 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    Track <ChevronRight className="w-4 h-4" />
-                  </button>
-                )}
+                <div className="mt-3">
+                  {isClaimed ? (
+                    <div className="text-center text-gray-400 py-2 text-xs sm:text-sm">
+                      ✓ Claimed
+                    </div>
+                  ) : isCompleted ? (
+                    <button
+                      onClick={() => handleClaim(uq._id)}
+                      className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-semibold py-2 rounded-xl transition text-xs sm:text-sm"
+                    >
+                      Claim Reward
+                    </button>
+                  ) : isExpired ? (
+                    <div className="text-center text-red-500 py-2 text-xs sm:text-sm">
+                      Quest Expired
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {/* navigate to start activity */}}
+                      className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1 text-xs sm:text-sm"
+                    >
+                      Track <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

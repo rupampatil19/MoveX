@@ -1,0 +1,132 @@
+// ============================================================
+// MOVEX NATIONAL GEOGRAPHIC CONFIG
+// ============================================================
+// Static configuration for India → State → City → Region.
+// The Pune regions remain exactly as they are (they're imported
+// from the existing regionConfig.js) — this file just provides
+// the surrounding hierarchy so we can add more cities later.
+//
+// Energy values are NOT stored here. Those come from the backend
+// via /api/community/all (keyed by a composite region key).
+// ============================================================
+
+import { PUNE_REGIONS } from './regionConfig';
+
+// ------------------------------------------------------------
+// COUNTRIES
+// ------------------------------------------------------------
+export const COUNTRIES = {
+  IN: { id: 'IN', name: 'India', center: [22.0, 79.0], defaultZoom: 5 },
+};
+
+// ------------------------------------------------------------
+// STATES / UTs — only include those with active MoveX cities
+// (grow this list as new cities come online)
+// ------------------------------------------------------------
+export const STATES = {
+  MH: {
+    id: 'MH',
+    name: 'Maharashtra',
+    countryId: 'IN',
+    center: [19.75, 75.7],
+    defaultZoom: 7,
+  },
+  // Future: KA (Karnataka), DL (Delhi), TN (Tamil Nadu), etc.
+};
+
+// ------------------------------------------------------------
+// CITIES — each city belongs to exactly one state
+// ------------------------------------------------------------
+export const CITIES = {
+  pune: {
+    id: 'pune',
+    name: 'Pune',
+    stateId: 'MH',
+    countryId: 'IN',
+    center: [18.56, 73.85],
+    defaultZoom: 12,
+    // Marker position for the City Energy Station (aggregate energy)
+    stationPosition: [18.5204, 73.8567],
+    // Active region IDs for this city, resolved from REGIONS below
+    regionIds: PUNE_REGIONS.map((r) => r.id),
+  },
+  // Future examples (uncomment when ready):
+  // mumbai: {
+  //   id: 'mumbai', name: 'Mumbai', stateId: 'MH', countryId: 'IN',
+  //   center: [19.0760, 72.8777], defaultZoom: 11,
+  //   stationPosition: [19.0760, 72.8777],
+  //   regionIds: ['Andheri', 'Bandra', 'Colaba', 'Powai', 'Thane'],
+  // },
+  // bengaluru: {
+  //   id: 'bengaluru', name: 'Bengaluru', stateId: 'KA', countryId: 'IN',
+  //   center: [12.9716, 77.5946], defaultZoom: 11,
+  //   stationPosition: [12.9716, 77.5946],
+  //   regionIds: ['Koramangala', 'Whitefield', 'Indiranagar', 'HSR', 'Jayanagar'],
+  // },
+};
+
+// ------------------------------------------------------------
+// REGIONS — imported from the existing Pune config for now.
+// Each region gets enriched with city/state context.
+// When we add other cities, we add their regions here.
+// ------------------------------------------------------------
+export const REGIONS = {};
+
+// Pune regions (backward compatible — same geometry, same colors)
+PUNE_REGIONS.forEach((r) => {
+  REGIONS[r.id] = {
+    ...r,
+    cityId: 'pune',
+    stateId: 'MH',
+    countryId: 'IN',
+    // Composite key for backend lookups — see Phase 2
+    compositeKey: `IN:MH:pune:${r.id}`,
+  };
+});
+
+// ------------------------------------------------------------
+// LOOKUP HELPERS
+// ------------------------------------------------------------
+
+export function getStateForCity(cityId) {
+  const city = CITIES[cityId];
+  if (!city) return null;
+  return STATES[city.stateId] || null;
+}
+
+export function getCityForRegion(regionId) {
+  const region = REGIONS[regionId];
+  if (!region) return null;
+  return CITIES[region.cityId] || null;
+}
+
+export function getStateForRegion(regionId) {
+  const region = REGIONS[regionId];
+  if (!region) return null;
+  return STATES[region.stateId] || null;
+}
+
+export function getRegionsForCity(cityId) {
+  return Object.values(REGIONS).filter((r) => r.cityId === cityId);
+}
+
+export function getCitiesForState(stateId) {
+  return Object.values(CITIES).filter((c) => c.stateId === stateId);
+}
+
+/**
+ * Build the composite region key used for backend lookups.
+ * Format: IN:MH:pune:Kothrud
+ */
+export function buildRegionKey(regionId) {
+  const r = REGIONS[regionId];
+  return r?.compositeKey || null;
+}
+
+/**
+ * Parse a composite key back into its parts.
+ */
+export function parseRegionKey(key) {
+  const [countryId, stateId, cityId, ...rest] = key.split(':');
+  return { countryId, stateId, cityId, regionId: rest.join(':') };
+}

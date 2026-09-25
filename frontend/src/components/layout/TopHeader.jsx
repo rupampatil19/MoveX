@@ -1,9 +1,11 @@
 import { Zap, Trophy, Flame, Bell, ChevronDown } from 'lucide-react';
+import { useTrophy } from '../../context/TrophyContext';
 import Logo from '../Logo';
 import NotificationBell from '../NotificationBell';
 
 const TopHeader = ({ user, pro }) => {
   const flowLabel = user?.accountType === 'PRO' ? 'Pro Athlete' : 'Beginner';
+  const { balance, loading: trophyLoading } = useTrophy();
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
@@ -38,7 +40,7 @@ const TopHeader = ({ user, pro }) => {
           </div>
           <div className="flex items-center gap-2 text-[#2563EB]">
             <Trophy className="w-5 h-5" />
-            <span className="font-semibold text-gray-700">{user.trophies?.length || 0}</span>
+            <span className="font-semibold text-gray-700">{trophyLoading ? '…' : (balance ?? 0)}</span>
           </div>
           <div className="flex items-center gap-2 text-[#2563EB]">
             <Flame className="w-5 h-5" />
