@@ -8,11 +8,13 @@ const Clan = require('../models/Clan');
 const ClanEnergyTransaction = require('../models/ClanEnergyTransaction');
 const ClanXPTransaction = require('../models/ClanXPTransaction');
 const VerificationResult = require('../models/VerificationResult');
+const TrophyTransaction = require('../models/TrophyTransaction');
 const avsEngine = require('../services/avsEngine');
 const questEngine = require('../services/questEngine');
 const RegionalContribution = require('../models/RegionalContribution');
+const { getHierarchy } = require('../data/regionHierarchy');
 const { createNotification } = require('../services/notificationService');
-
+const { getHubName } = require('../data/regionHierarchy');
 const router = express.Router();
 
 const auth = (req, res, next) => {
@@ -36,7 +38,7 @@ function generateDemoData(activityType, duration) {
     gpsPoints: 120,
     sensorQuality: 85,
     dataQualityScore: 80,
-    duration: duration
+    duration: duration,
   };
   if (activityType === 'running') {
     data.avgSpeed = 10.2 + Math.random() * 1.5;
@@ -61,15 +63,20 @@ function generateDemoData(activityType, duration) {
 
 // POST /api/verification/run/:activityId
 router.post('/run/:activityId', auth, async (req, res) => {
+  const __t0 = Date.now();
+  const __stamp = (label) => console.log(`[verify] ${label}: ${Date.now() - __t0}ms`);
+
   try {
+    __stamp('start');
+
     const activity = await Activity.findById(req.params.activityId);
     if (!activity || activity.userId.toString() !== req.userId) {
       return res.status(404).json({ msg: 'Activity not found' });
     }
-
     if (activity.verification && activity.verification.status !== 'PENDING') {
       return res.status(400).json({ msg: 'Activity already verified' });
     }
+    __stamp('loaded activity');
 
     // Generate raw data if not present
     let rawData = activity.rawData;
@@ -80,6 +87,7 @@ router.post('/run/:activityId', auth, async (req, res) => {
 
     // Run AVS engine
     const avsResult = avsEngine.calculateAVS(activity.type, rawData);
+    __stamp('ran AVS');
 
     // Build steps
     const steps = [
@@ -90,19 +98,19 @@ router.post('/run/:activityId', auth, async (req, res) => {
       { step: 5, name: 'Data Preprocessing', status: rawData.dataQualityScore >= 80 ? 'GREEN' : rawData.dataQualityScore >= 60 ? 'ORANGE' : 'RED', detail: `Preprocessed quality ${rawData.dataQualityScore}%`, score: rawData.dataQualityScore },
       { step: 6, name: 'Activity Classification', status: avsResult.detectedType === activity.type ? 'GREEN' : 'ORANGE', detail: `${activity.type} detected`, score: avsResult.detectedType === activity.type ? 100 : 60 },
       { step: 7, name: 'Motion Pattern Verification', status: avsResult.motionScore >= 80 ? 'GREEN' : avsResult.motionScore >= 60 ? 'ORANGE' : 'RED', detail: `Pattern score ${avsResult.motionScore.toFixed(0)}%`, score: avsResult.motionScore },
-      { step: 8, name: 'GPS Verification', status: (activity.type === 'workout' ? 'ORANGE' : avsResult.gpsScore >= 80 ? 'GREEN' : avsResult.gpsScore >= 60 ? 'ORANGE' : 'RED'), detail: activity.type === 'workout' ? 'GPS not available' : `GPS score ${avsResult.gpsScore.toFixed(0)}%`, score: avsResult.gpsScore },
+      { step: 8, name: 'GPS Verification', status: activity.type === 'workout' ? 'ORANGE' : avsResult.gpsScore >= 80 ? 'GREEN' : avsResult.gpsScore >= 60 ? 'ORANGE' : 'RED', detail: activity.type === 'workout' ? 'GPS not available' : `GPS score ${avsResult.gpsScore.toFixed(0)}%`, score: avsResult.gpsScore },
       { step: 9, name: 'Cross-Sensor Consistency', status: 'GREEN', detail: 'Consistent', score: 85 },
-      { step: 10, name: 'Final Validity Score & Decision', status: avsResult.decision === 'VERIFIED' ? 'GREEN' : avsResult.decision === 'PROBABLE' ? 'ORANGE' : 'RED', detail: `AVS ${avsResult.avs.toFixed(0)}/100, ${avsResult.confidence} confidence, ${avsResult.decision}`, score: avsResult.avs }
+      { step: 10, name: 'Final Validity Score & Decision', status: avsResult.decision === 'VERIFIED' ? 'GREEN' : avsResult.decision === 'PROBABLE' ? 'ORANGE' : 'RED', detail: `AVS ${avsResult.avs.toFixed(0)}/100, ${avsResult.confidence} confidence, ${avsResult.decision}`, score: avsResult.avs },
     ];
 
     activity.verification = {
       avs: avsResult.avs,
       status: avsResult.decision,
       confidence: avsResult.confidence,
-      steps
+      steps,
     };
 
-    // Save VerificationResult
+    // Verification doc (will be saved in the parallel batch below)
     const verificationDoc = new VerificationResult({
       userId: req.userId,
       activityId: activity._id,
@@ -118,9 +126,8 @@ router.post('/run/:activityId', auth, async (req, res) => {
       decision: avsResult.decision,
       energyEligible: avsResult.decision !== 'INVALID',
       energyMultiplier: 1,
-      anomalies: avsResult.anomalies || []
+      anomalies: avsResult.anomalies || [],
     });
-    await verificationDoc.save();
 
     // ----- Reward calculation -----
     const user = await User.findById(req.userId);
@@ -146,17 +153,15 @@ router.post('/run/:activityId', auth, async (req, res) => {
       energyAward = Math.round(baseEnergy * (avsResult.avs / 100) * energyMultiplier * 0.5);
       trophyAward = Math.round(baseTrophy * (avsResult.avs / 100) * trophyMultiplier * 0.5);
       xpAward = Math.round(activity.distance * 7);
-    } else {
-      energyAward = 0;
-      trophyAward = 0;
-      xpAward = 0;
     }
 
-    // Update user
+    // Update user in memory
     user.energy += energyAward;
+    user.trophyPoints = (user.trophyPoints || 0) + trophyAward;
     user.xp += xpAward;
     user.totalDistance += activity.distance;
     user.level = Math.floor(user.xp / 1000) + 1;
+
     const today = new Date().toDateString();
     if (user.lastActivityDate && user.lastActivityDate.toDateString() !== today) {
       user.streak += 1;
@@ -164,6 +169,7 @@ router.post('/run/:activityId', auth, async (req, res) => {
       user.streak = 1;
     }
     user.lastActivityDate = new Date();
+
     // Daily quest progress
     if (!user.dailyQuestCompleted) {
       user.dailyQuestProgress += activity.duration;
@@ -173,7 +179,8 @@ router.post('/run/:activityId', auth, async (req, res) => {
         user.xp += 25;
       }
     }
-    // Trophy check
+
+    // Trophy detection
     if (user.totalDistance >= 10 && !user.trophies.includes('10 KM Runner')) {
       user.trophies.push('10 KM Runner');
       trophyName = '10 KM Runner';
@@ -188,7 +195,10 @@ router.post('/run/:activityId', auth, async (req, res) => {
       trophyName = 'First Activity';
     }
 
-    // Community contribution: 30% of energy, scoped to user's accountType
+    // Geographic hierarchy
+    const hier = getHierarchy(user.region);
+
+    // Community contribution: 30% of energy
     const communityContribution = Math.round(energyAward * 0.3);
     let community = await Community.findOne({ region: user.region, accountType: user.accountType });
     if (!community) {
@@ -196,9 +206,17 @@ router.post('/run/:activityId', auth, async (req, res) => {
         region: user.region,
         name: user.region,
         accountType: user.accountType,
-        membersCount: 1
+        city: hier.city,
+        state: hier.state,
+        country: hier.country,
+        membersCount: 1,
       });
     }
+    // Ensure geographic fields are set (in case existing doc lacked them)
+    if (!community.city) community.city = hier.city;
+    if (!community.state) community.state = hier.state;
+    if (!community.country) community.country = hier.country;
+
     community.totalEnergy += communityContribution;
     community.powerStationCurrentEnergy += communityContribution;
 
@@ -210,31 +228,78 @@ router.post('/run/:activityId', auth, async (req, res) => {
     const oldLevel = community.powerStationLevel || 1;
     community.powerStationLevel = newLevel;
     community.communityLevel = newLevel;
-    community.powerStationRequiredEnergy = newLevel < thresholds.length ? thresholds[newLevel] : thresholds[thresholds.length - 1];
+    community.powerStationRequiredEnergy =
+      newLevel < thresholds.length ? thresholds[newLevel] : thresholds[thresholds.length - 1];
     community.lastUpdated = new Date();
-    await community.save();
 
-    // Record regional contribution with accountType
-    if (communityContribution > 0) {
-      await RegionalContribution.create({
-        userId: req.userId,
-        region: user.region,
-        accountType: user.accountType,
-        activityId: activity._id,
-        amount: communityContribution,
-        source: 'ACTIVITY'
-      });
-    }
-
-    // ----- Clan contribution -----
+    // Clan contribution
     const clanMembership = await ClanMember.findOne({ userId: req.userId });
     let clanEnergyContribution = 0;
     let clanXPContribution = 0;
+
+    activity.energyAwarded = energyAward;
+    activity.xpAwarded = xpAward;
+    activity.trophyAwarded = trophyName;
+    activity.communityContribution = communityContribution;
+    activity.tps = avsResult.avs;
+
+    // ------- PARALLEL WRITES -------
+    // All independent DB writes fire together instead of sequentially.
+    const parallelTasks = [
+      community.save(),
+      user.save(),
+      activity.save(),
+      verificationDoc.save(),
+      communityContribution > 0
+        ? RegionalContribution.create({
+            userId: req.userId,
+            region: user.region,
+            accountType: user.accountType,
+            city: hier.city,
+            state: hier.state,
+            country: hier.country,
+            activityId: activity._id,
+            amount: communityContribution,
+            source: 'ACTIVITY',
+          })
+        : Promise.resolve(),
+      trophyAward > 0
+        ? TrophyTransaction.create({
+            userId: user._id,
+            athleteMode: user.accountType,
+            delta: trophyAward,
+            reason: 'VERIFIED_ACTIVITY',
+            referenceId: activity._id,
+            balanceAfter: user.trophyPoints,
+          })
+        : Promise.resolve(),
+    ];
+
+    // Clan writes only when membership exists and rewards are non-zero
     if (clanMembership && energyAward > 0) {
       clanEnergyContribution = Math.round(energyAward * 0.1);
       clanXPContribution = Math.round(xpAward * 0.05);
-      await ClanEnergyTransaction.create({ clanId: clanMembership.clanId, userId: req.userId, amount: clanEnergyContribution, source: 'ACTIVITY' });
-      await ClanXPTransaction.create({ clanId: clanMembership.clanId, userId: req.userId, amount: clanXPContribution, source: 'ACTIVITY' });
+      parallelTasks.push(
+        ClanEnergyTransaction.create({
+          clanId: clanMembership.clanId,
+          userId: req.userId,
+          amount: clanEnergyContribution,
+          source: 'ACTIVITY',
+        }),
+        ClanXPTransaction.create({
+          clanId: clanMembership.clanId,
+          userId: req.userId,
+          amount: clanXPContribution,
+          source: 'ACTIVITY',
+        })
+      );
+    }
+
+    await Promise.all(parallelTasks);
+    __stamp('parallel writes complete');
+
+    // Clan doc update (needs its own update after we know contributions)
+    if (clanMembership && energyAward > 0) {
       const clan = await Clan.findById(clanMembership.clanId);
       if (clan) {
         clan.energy += clanEnergyContribution;
@@ -252,71 +317,28 @@ router.post('/run/:activityId', auth, async (req, res) => {
         await clan.save();
       }
     }
+    __stamp('clan write complete');
 
-    // Save activity rewards
-    activity.energyAwarded = energyAward;
-    activity.xpAwarded = xpAward;
-    activity.trophyAwarded = trophyName;
-    activity.communityContribution = communityContribution;
-    activity.tps = avsResult.avs;
-    await activity.save();
-    await user.save();
+    // ---- Compute city + state aggregates (small parallel queries) ----
+    const [cityAgg, stateAgg] = await Promise.all([
+      hier.city
+        ? Community.aggregate([
+            { $match: { city: hier.city, accountType: user.accountType } },
+            { $group: { _id: null, totalEnergy: { $sum: '$totalEnergy' } } },
+          ])
+        : Promise.resolve([]),
+      hier.state
+        ? Community.aggregate([
+            { $match: { state: hier.state, accountType: user.accountType } },
+            { $group: { _id: null, totalEnergy: { $sum: '$totalEnergy' } } },
+          ])
+        : Promise.resolve([]),
+    ]);
+    const cityEnergy = cityAgg?.[0]?.totalEnergy || 0;
+    const stateEnergy = stateAgg?.[0]?.totalEnergy || 0;
+    __stamp('aggregates complete');
 
-    // Process quests
-    await questEngine.processActivity(req.userId, activity);
-
-    // ----- NOTIFICATIONS + SOCKET EMIT -----
-    const io = req.app.get('io');
-
-    // 1. Activity verified notification
-    if (avsResult.decision === 'VERIFIED' || avsResult.decision === 'PROBABLE') {
-      const notif = await createNotification(
-        req.userId,
-        'MOTIVATIONAL',
-        'Activity Verified',
-        `Your ${activity.type} activity was verified. You earned +${energyAward} Energy and +${xpAward} XP.`,
-        '/activity'
-      );
-      if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
-    }
-
-    // 2. Regional level up notification
-    if (newLevel > oldLevel) {
-      const notif = await createNotification(
-        req.userId,
-        'COMMUNITY',
-        'Region Level Up!',
-        `Your region ${user.region} reached Level ${newLevel} (${getHubName? (await import('../data/regionConfig')).getHubName(newLevel) : ''}).`,
-        '/map'
-      );
-      if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
-    }
-
-    // 3. Clan contribution milestone (example: every 500 energy)
-    if (clanMembership && clanEnergyContribution >= 500) {
-      const notif = await createNotification(
-        req.userId,
-        'SOCIAL',
-        'Clan Contribution Milestone',
-        `You contributed ${clanEnergyContribution} Energy to your clan.`,
-        '/clan'
-      );
-      if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
-    }
-
-    // 4. Achievement/trophy unlocked
-    if (trophyName) {
-      const notif = await createNotification(
-        req.userId,
-        'REWARD',
-        'Achievement Unlocked',
-        `You earned the "${trophyName}" trophy.`,
-        '/profile'
-      );
-      if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
-    }
-
-    // Calculate TPS and score breakdown
+    // TPS + score breakdown
     const scoreBreakdown = {
       effort: avsResult.physiologicalScore || 0,
       performance: avsResult.motionScore || 0,
@@ -325,13 +347,14 @@ router.post('/run/:activityId', auth, async (req, res) => {
       fairness: avsResult.gpsScore || 0,
     };
     const tps = Math.round(
-      (scoreBreakdown.effort * 0.25) +
-      (scoreBreakdown.performance * 0.35) +
-      (scoreBreakdown.consistency * 0.15) +
-      (scoreBreakdown.health * 0.15) +
-      (scoreBreakdown.fairness * 0.10)
+      scoreBreakdown.effort * 0.25 +
+      scoreBreakdown.performance * 0.35 +
+      scoreBreakdown.consistency * 0.15 +
+      scoreBreakdown.health * 0.15 +
+      scoreBreakdown.fairness * 0.1
     );
 
+    // ---- SEND RESPONSE ----
     res.json({
       activity,
       verification: activity.verification,
@@ -346,12 +369,104 @@ router.post('/run/:activityId', auth, async (req, res) => {
       communityContribution,
       clanEnergyContribution,
       clanXPContribution,
-      user: { id: user._id, name: user.name, xp: user.xp, level: user.level, energy: user.energy, streak: user.streak, trophies: user.trophies },
-      community: { region: community.region, totalEnergy: community.totalEnergy, powerStationLevel: community.powerStationLevel, powerStationCurrentEnergy: community.powerStationCurrentEnergy, powerStationRequiredEnergy: community.powerStationRequiredEnergy }
+      cityEnergy,
+      stateEnergy,
+      regionEnergy: community.totalEnergy,
+      user: {
+        id: user._id,
+        name: user.name,
+        xp: user.xp,
+        level: user.level,
+        energy: user.energy,
+        streak: user.streak,
+        trophies: user.trophies,
+        trophyPoints: user.trophyPoints,
+      },
+      community: {
+        region: community.region,
+        totalEnergy: community.totalEnergy,
+        powerStationLevel: community.powerStationLevel,
+        powerStationCurrentEnergy: community.powerStationCurrentEnergy,
+        powerStationRequiredEnergy: community.powerStationRequiredEnergy,
+        city: community.city,
+        state: community.state,
+      },
     });
+    __stamp('response sent');
+
+    // ---- FIRE-AND-FORGET POST-RESPONSE WORK ----
+    // These run AFTER the client already has the response.
+    const io = req.app.get('io');
+
+    // 1. Activity verified notification
+    if (avsResult.decision === 'VERIFIED' || avsResult.decision === 'PROBABLE') {
+      createNotification(
+        req.userId,
+        'MOTIVATIONAL',
+        'Activity Verified',
+        `Your ${activity.type} activity was verified. You earned +${energyAward} Energy and +${xpAward} XP.`,
+        '/activity'
+      )
+        .then((notif) => {
+          if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
+        })
+        .catch((e) => console.error('Notification failed:', e.message));
+    }
+
+    // 2. Regional level up notification
+    if (newLevel > oldLevel) {
+      createNotification(
+        req.userId,
+        'COMMUNITY',
+        'Region Level Up!',
+        `Your region ${user.region} reached Level ${newLevel} (${getHubName ? getHubName(newLevel) : ''}).`,
+        '/map'
+      )
+        .then((notif) => {
+          if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
+        })
+        .catch((e) => console.error('Notification failed:', e.message));
+    }
+
+    // 3. Clan contribution milestone
+    if (clanMembership && clanEnergyContribution >= 500) {
+      createNotification(
+        req.userId,
+        'SOCIAL',
+        'Clan Contribution Milestone',
+        `You contributed ${clanEnergyContribution} Energy to your clan.`,
+        '/clan'
+      )
+        .then((notif) => {
+          if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
+        })
+        .catch((e) => console.error('Notification failed:', e.message));
+    }
+
+    // 4. Trophy unlocked notification
+    if (trophyName) {
+      createNotification(
+        req.userId,
+        'REWARD',
+        'Achievement Unlocked',
+        `You earned the "${trophyName}" trophy.`,
+        '/profile'
+      )
+        .then((notif) => {
+          if (io && notif) io.to(`user_${req.userId}`).emit('notification', notif);
+        })
+        .catch((e) => console.error('Notification failed:', e.message));
+    }
+
+    // 5. Quest engine
+    questEngine
+      .processActivity(req.userId, activity)
+      .catch((e) => console.error('Quest engine failed:', e.message));
+
+    return;
   } catch (err) {
     console.error('Verification error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ msg: err.message, error: err.message });
   }
 });
 
@@ -359,10 +474,16 @@ router.post('/run/:activityId', auth, async (req, res) => {
 router.get('/:activityId', auth, async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.activityId);
-    if (!activity || activity.userId.toString() !== req.userId) return res.status(404).json({ msg: 'Activity not found' });
+    if (!activity || activity.userId.toString() !== req.userId) {
+      return res.status(404).json({ msg: 'Activity not found' });
+    }
     const verificationDoc = await VerificationResult.findOne({ activityId: activity._id });
     if (!verificationDoc) {
-      return res.json({ verification: activity.verification, energyAwarded: activity.energyAwarded, xpAwarded: activity.xpAwarded });
+      return res.json({
+        verification: activity.verification,
+        energyAwarded: activity.energyAwarded,
+        xpAwarded: activity.xpAwarded,
+      });
     }
     res.json({
       verification: activity.verification,
@@ -374,14 +495,14 @@ router.get('/:activityId', auth, async (req, res) => {
         performance: verificationDoc.gpsConsistencyScore,
         consistency: verificationDoc.durationScore,
         health: verificationDoc.physiologicalScore,
-        fairness: verificationDoc.dataQualityScore
+        fairness: verificationDoc.dataQualityScore,
       },
       decision: verificationDoc.decision,
       confidence: verificationDoc.confidence,
-      anomalies: verificationDoc.anomalies
+      anomalies: verificationDoc.anomalies,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ msg: err.message, error: err.message });
   }
 });
 

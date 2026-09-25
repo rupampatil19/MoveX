@@ -1,0 +1,62 @@
+import { useEffect } from 'react';
+import { useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { getHubImagePath, getHubName, getCityLevel } from '../../data/regionConfig';
+
+/**
+ * Big city-level Hub marker. Visible at city zoom (9-10).
+ * Replaces the individual regional hubs. One per active city.
+ */
+const CityCollectiveHub = ({ city, totalEnergy, onClick }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!city || totalEnergy == null) return;
+
+    const level = getCityLevel(totalEnergy);
+    const imagePath = getHubImagePath(level);
+    const hubName = getHubName(level);
+
+    const icon = L.divIcon({
+      className: 'city-collective-hub',
+      html: `
+        <div style="
+          width: 96px; height: 96px; border-radius: 50%; overflow: hidden;
+          border: 3px solid #00CFFF;
+          box-shadow:
+            0 0 24px rgba(0,207,255,0.75),
+            0 0 8px rgba(0,207,255,0.5),
+            inset 0 0 0 2px rgba(255,255,255,0.1);
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(11,31,42,0.4);
+        ">
+          <img
+            src="${imagePath}"
+            style="width:100%; height:100%; object-fit:cover;"
+            alt="${city.name} Hub"
+          />
+        </div>
+      `,
+      iconSize: [96, 96],
+      iconAnchor: [48, 48],
+      tooltipAnchor: [0, -48],
+    });
+
+    const marker = L.marker(city.stationPosition || city.center, { icon })
+      .addTo(map)
+      .bindTooltip(
+        `${city.name} Energy Hub — ${hubName} (Level ${level})`,
+        { direction: 'top', offset: [0, -48], opacity: 1 }
+      );
+
+    marker.on('click', () => {
+      onClick?.({ city, level, hubName, imagePath, totalEnergy });
+    });
+
+    return () => marker.remove();
+  }, [city, totalEnergy, map, onClick]);
+
+  return null;
+};
+
+export default CityCollectiveHub;

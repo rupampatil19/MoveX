@@ -47,7 +47,7 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json({ activity });
   } catch (err) {
     console.error('Activity save error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ msg: err.message, error: err.message });
   }
 });
 

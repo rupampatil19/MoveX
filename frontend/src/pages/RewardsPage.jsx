@@ -1,106 +1,190 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import API from '../api';
 import { motion } from 'framer-motion';
-import { Gift } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { useTrophy } from '../context/TrophyContext';
+
+import TrophyBalanceHeader from '../components/rewards/TrophyBalanceHeader';
+import RewardFilters from '../components/rewards/RewardFilters';
+import RewardCard from '../components/rewards/RewardCard';
+import NextRewardProgress from '../components/rewards/NextRewardProgress';
+import RedemptionSuccessModal from '../components/rewards/RedemptionSuccessModal';
+import MyRewardsList from '../components/rewards/MyRewardsList';
+import RedemptionHistory from '../components/rewards/RedemptionHistory';
+
+const CATEGORY_MAP = {
+  all: 'All',
+  COSMETIC: 'Cosmetics',
+  BOOST: 'Boosts',
+  PARTNER: 'Partner Rewards',
+  CLAN: 'Clan Perks',
+  EXPERIENCE: 'Experiences',
+};
 
 const RewardsPage = () => {
-  const [catalog, setCatalog] = useState([]);
-  const [inventory, setInventory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { balance, loading: balanceLoading, applyBalance } = useTrophy();
 
-  useEffect(() => {
-    fetchData();
+  const [catalog, setCatalog] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [tab, setTab] = useState('catalog');
+  const [category, setCategory] = useState('all');
+  const [sort, setSort] = useState('recommended');
+  const [success, setSuccess] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const loadCatalog = useCallback(async () => {
+    try {
+      const { data } = await API.get('/rewards/catalog');
+      setCatalog(data || []);
+    } catch (err) {
+      console.error('Catalog load error:', err);
+    } finally {
+      setCatalogLoading(false);
+    }
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
+
+  const visible = useMemo(() => {
+    let list = catalog.filter((r) => category === 'all' || r.category === category);
+    if (sort === 'cost_asc') list = [...list].sort((a, b) => a.trophyCost - b.trophyCost);
+    if (sort === 'cost_desc') list = [...list].sort((a, b) => b.trophyCost - a.trophyCost);
+    if (sort === 'newest')
+      list = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return list;
+  }, [catalog, category, sort]);
+
+  const handleRedeem = async (reward) => {
+    if (busy) return;
+    setBusy(true);
     try {
-      const [catRes, invRes] = await Promise.all([
-        API.get('/rewards/catalog'),
-        API.get('/rewards/inventory')
-      ]);
-      setCatalog(catRes.data);
-      setInventory(invRes.data);
-      setLoading(false);
+      const idempotencyKey = `${reward._id}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      const { data } = await API.post('/rewards/redeem', {
+        rewardId: reward._id,
+        idempotencyKey,
+      });
+
+      if (!data.ok) {
+        if (data.error === 'insufficient_trophies') {
+          alert(`You need ${(data.cost ?? 0) - (data.balance ?? 0)} more Trophies.`);
+        } else {
+          alert("Reward couldn't be redeemed right now.");
+        }
+        return;
+      }
+      applyBalance(data.new_balance);
+      setSuccess(data);
+      await loadCatalog();
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      const e = err.response?.data;
+      if (e?.error === 'insufficient_trophies') {
+        alert(`You need ${(e.cost ?? 0) - (e.balance ?? 0)} more Trophies.`);
+      } else {
+        alert('Redemption failed. Please try again.');
+      }
+    } finally {
+      setBusy(false);
     }
   };
 
-  const claimReward = async (rewardId) => {
-    try {
-      await API.post(`/rewards/${rewardId}/claim`);
-      alert('Reward claimed successfully!');
-      fetchData();
-    } catch (err) {
-      alert(err.response?.data?.msg || 'Failed to claim reward');
-    }
-  };
-
-  const rarityColor = {
-    COMMON: 'bg-gray-400',
-    UNCOMMON: 'bg-blue-400',
-    RARE: 'bg-blue-400',
-    EPIC: 'bg-purple-400',
-    LEGENDARY: 'bg-yellow-400'
-  };
-
-  if (loading) return <div className="p-6 text-gray-700">Loading rewards...</div>;
+  const displayBalance = balanceLoading ? null : balance ?? 0;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">Rewards</h1>
+    <div className="max-w-6xl mx-auto px-4 pt-2 pb-28 space-y-5">
       <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">My Inventory</h2>
-        {inventory.length === 0 ? (
-          <div className="text-gray-500">No rewards earned yet.</div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {inventory.map(item => (
-              <div key={item._id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                <div className="text-3xl mb-2">{item.rewardId?.icon || '🎁'}</div>
-                <p className="text-gray-800 font-semibold">{item.rewardId?.name}</p>
-                <p className="text-xs text-gray-500">{item.rewardId?.description}</p>
-                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs text-white ${rarityColor[item.rewardId?.rarity] || 'bg-gray-400'}`}>{item.rewardId?.rarity}</span>
-                <p className="text-xs text-gray-400 mt-1">Qty: {item.quantity}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Sparkles className="text-[#2563EB]" size={24} />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+            MoveX Bazaar &amp; Rewards
+          </h1>
+        </div>
+        <p className="text-sm text-gray-600 mt-2">
+          Redeem your verified MoveX Trophies
+        </p>
       </div>
-      <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">Reward Catalog</h2>
-        {catalog.length === 0 ? (
-          <div className="text-gray-500">No rewards available.</div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {catalog.map(reward => (
-              <div key={reward._id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                <div className="text-3xl mb-2">{reward.icon || '🎁'}</div>
-                <p className="text-gray-800 font-semibold">{reward.name}</p>
-                <p className="text-xs text-gray-500">{reward.description}</p>
-                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs text-white ${rarityColor[reward.rarity] || 'bg-gray-400'}`}>{reward.rarity}</span>
-                <button onClick={() => claimReward(reward._id)} className="mt-3 w-full bg-blue-500 hover:bg-blue-700 text-white py-1 rounded-lg text-sm">Claim</button>
-              </div>
-            ))}
-          </div>
-        )}
+
+      <TrophyBalanceHeader balance={displayBalance} loading={balanceLoading} />
+
+      {!catalogLoading && displayBalance !== null && (
+        <NextRewardProgress balance={displayBalance} rewards={catalog} />
+      )}
+
+      <div className="flex gap-2 border-b overflow-x-auto -mx-4 px-4">
+        {[
+          { k: 'catalog', label: 'Catalog' },
+          { k: 'mine', label: 'My Rewards' },
+          { k: 'history', label: 'History' },
+        ].map((t) => (
+          <button
+            key={t.k}
+            onClick={() => setTab(t.k)}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition whitespace-nowrap ${
+              tab === t.k
+                ? 'border-[#2563EB] text-[#2563EB]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-      <button
-        onClick={async () => {
-          try {
-            await API.post('/rewards/seed-demo');
-            alert('Demo rewards seeded!');
-            fetchData();
-          } catch (err) {
-            alert('Demo rewards already seeded or failed');
-          }
-        }}
-        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg"
-      >
-        Seed Demo Rewards
-      </button>
-    </motion.div>
+
+      {tab === 'catalog' && (
+        <>
+          <RewardFilters
+            active={category}
+            onChange={setCategory}
+            labels={CATEGORY_MAP}
+            sort={sort}
+            onSortChange={setSort}
+          />
+
+          {catalogLoading ? (
+            <p className="text-sm text-gray-500">Loading rewards…</p>
+          ) : visible.length === 0 ? (
+            <p className="text-sm text-gray-500">No rewards match this filter.</p>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="
+                grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4
+                md:gap-5
+              "
+            >
+              {visible.map((r) => (
+                <RewardCard
+                  key={r._id}
+                  reward={r}
+                  balance={displayBalance ?? 0}
+                  onRedeem={handleRedeem}
+                  busy={busy}
+                />
+              ))}
+            </motion.div>
+          )}
+        </>
+      )}
+
+      {tab === 'mine' && <MyRewardsList onRefresh={loadCatalog} />}
+      {tab === 'history' && <RedemptionHistory />}
+
+      {success && (
+        <RedemptionSuccessModal
+          result={success}
+          onViewReward={() => {
+            setSuccess(null);
+            setTab('mine');
+          }}
+          onContinue={() => setSuccess(null)}
+        />
+      )}
+    </div>
   );
 };
 

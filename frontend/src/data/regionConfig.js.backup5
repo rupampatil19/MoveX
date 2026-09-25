@@ -1,0 +1,82 @@
+// ============================================================
+// PUNE & BENGALURU REGION CONFIG
+// Regional geometry is generated dynamically in regionUtils.js
+// ============================================================
+
+// Seven official Pune regions
+export const PUNE_REGIONS = [
+  { id: 'Kothrud',        center: [18.46, 73.80], color: '#4CAF50' },
+  { id: 'Hinjewadi',      center: [18.56, 73.76], color: '#2196F3' },
+  { id: 'Baner',          center: [18.64, 73.88], color: '#9C27B0' },
+  { id: 'Shivaji Nagar',  center: [18.52, 73.88], color: '#E91E63' },
+  { id: 'Viman Nagar',    center: [18.62, 73.96], color: '#FF9800' },
+  { id: 'Hadapsar',       center: [18.49, 73.94], color: '#00BCD4' },
+  { id: 'Pimpri',         center: [18.66, 73.76], color: '#FF5722' },
+];
+
+// Bengaluru regions — centers adjusted so all 5 are angularly distinct
+// from Bengaluru center [12.9716, 77.5946] (no overlap).
+export const BENGALURU_REGIONS = [
+  { id: 'Koramangala', center: [12.9352, 77.6245], color: '#4CAF50' },
+  { id: 'HSR Layout',  center: [12.8950, 77.6200], color: '#FF9800' },
+  { id: 'Jayanagar',   center: [12.9250, 77.5938], color: '#E91E63' },
+  { id: 'Indiranagar', center: [12.9900, 77.6400], color: '#9C27B0' },
+  { id: 'Whitefield',  center: [12.9698, 77.7500], color: '#2196F3' },
+];
+
+// Convenience map: city id → array of regions
+export const CITY_REGIONS = {
+  pune: PUNE_REGIONS,
+  bengaluru: BENGALURU_REGIONS,
+};
+
+// ============================================================
+// REGION-LEVEL PROGRESSION (existing Hub thresholds)
+// ============================================================
+export const REGION_LEVEL_THRESHOLDS = [0, 20000, 50000, 100000, 200000];
+export const BUILDING_NAMES = ['Tide Hut', 'Wave Dock', 'Aqua Bastion', 'Ocean Citadel', "Poseidon's Hub"];
+export const BUILDING_EMOJIS = ['🛖', '⚓', '🏰', '🛯', '🔱'];
+
+export function getRegionLevel(totalEnergy) {
+  let level = 1;
+  for (let i = 0; i < REGION_LEVEL_THRESHOLDS.length; i++) {
+    if (totalEnergy >= REGION_LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return Math.min(level, 5);
+}
+
+export function getBuildingName(totalEnergy) {
+  return BUILDING_NAMES[getRegionLevel(totalEnergy) - 1];
+}
+
+export function getBuildingEmoji(totalEnergy) {
+  return BUILDING_EMOJIS[getRegionLevel(totalEnergy) - 1];
+}
+
+export function getRegionById(regionId) {
+  return [...PUNE_REGIONS, ...BENGALURU_REGIONS].find((r) => r.id === regionId);
+}
+
+// ============================================================
+// CITY-LEVEL PROGRESSION (independent from regional thresholds)
+// ============================================================
+export const CITY_LEVEL_THRESHOLDS = [0, 100000, 250000, 500000, 1000000];
+
+export function getCityLevel(totalEnergy) {
+  let level = 1;
+  for (let i = 0; i < CITY_LEVEL_THRESHOLDS.length; i++) {
+    if (totalEnergy >= CITY_LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return Math.min(level, 5);
+}
+
+export function getCityRequiredEnergy(level) {
+  const safe = Math.min(Math.max(level, 1), 5);
+  return CITY_LEVEL_THRESHOLDS[safe - 1];
+}
+
+// ============================================================
+// HUB ASSET HELPERS
+// ============================================================
+import { getHubImagePath, getHubName } from './hubAssets';
+export { getHubImagePath, getHubName };

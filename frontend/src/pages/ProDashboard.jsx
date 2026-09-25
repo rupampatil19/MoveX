@@ -4,12 +4,16 @@ import API from '../api';
 import { motion } from 'framer-motion';
 import { Flame, Trophy, Zap, Activity, Users, Building, Swords, ChevronRight } from 'lucide-react';
 import DashboardMap from '../components/DashboardMap';
+import { useTrophy } from '../context/TrophyContext';
 
 const ProDashboard = ({ user }) => {
   const [activities, setActivities] = useState([]);
   const [community, setCommunity] = useState(null);
   const [clan, setClan] = useState(null);
   const [currentUser, setCurrentUser] = useState(user);
+
+  // Shared TrophyContext — same source as Header and Rewards
+  const { balance: trophyBalance, loading: trophyLoading } = useTrophy();
 
   useEffect(() => {
     fetchUser();
@@ -40,6 +44,11 @@ const ProDashboard = ({ user }) => {
     }
   };
 
+  // Use shared Context when available, fall back to /auth/me value
+  const displayTrophies = trophyLoading
+    ? (currentUser?.trophyPoints ?? 0)
+    : (trophyBalance ?? currentUser?.trophyPoints ?? 0);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Hero */}
@@ -68,7 +77,7 @@ const ProDashboard = ({ user }) => {
             </div>
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <div className="flex items-center gap-2 text-[#2563EB] mb-1"><Trophy className="w-5 h-5" /><span className="text-sm text-gray-500">Trophies</span></div>
-              <p className="text-2xl font-bold text-gray-800">{currentUser?.trophies?.length || 0}</p>
+              <p className="text-2xl font-bold text-gray-800">{displayTrophies}</p>
             </div>
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <div className="flex items-center gap-2 text-orange-500 mb-1"><Flame className="w-5 h-5" /><span className="text-sm text-gray-500">Streak</span></div>
@@ -109,11 +118,20 @@ const ProDashboard = ({ user }) => {
               <h2 className="text-sm font-semibold text-gray-800">Power Station</h2>
               {community ? <p className="text-xs text-gray-600">Level {community.powerStationLevel}</p> : <p className="text-xs text-gray-500">No data</p>}
             </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+            {/* My Clan — real user data, clickable */}
+            <Link
+              to="/clan"
+              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition block"
+            >
               <Users className="w-5 h-5 text-[#2563EB] mb-1" />
-              <h2 className="text-sm font-semibold text-gray-800">Clan</h2>
-              {clan ? <p className="text-xs text-gray-700">{clan.name}</p> : <p className="text-xs text-gray-500">No clan joined</p>}
-            </div>
+              <h2 className="text-sm font-semibold text-gray-800">My Clan</h2>
+              {clan
+                ? <p className="text-xs text-gray-700 truncate">{clan.name}</p>
+                : <p className="text-xs text-gray-500">No Clan Yet</p>}
+              <p className="text-xs text-[#2563EB] mt-1">
+                {clan ? 'View clan →' : 'Join a clan →'}
+              </p>
+            </Link>
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <Swords className="w-5 h-5 text-[#2563EB] mb-1" />
               <h2 className="text-sm font-semibold text-gray-800">Clan Wars</h2>

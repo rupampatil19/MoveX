@@ -1,0 +1,72 @@
+import { useEffect } from 'react';
+import { useMap } from 'react-leaflet';
+import L from 'leaflet';
+
+/**
+ * Renders an Energy Station dot for every city.
+ * Visible at India + State zoom levels.
+ */
+const CityStationsLayer = ({ cities, onCityClick }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!cities) return;
+
+    const markers = [];
+
+    Object.values(cities).forEach((city) => {
+      const pos = city.stationPosition || city.center;
+
+      const icon = L.divIcon({
+        className: 'city-station',
+        html: `
+          <div style="
+            position: relative;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+          ">
+            <div style="
+              position: absolute;
+              inset: 0;
+              border-radius: 50%;
+              background: rgba(37,99,235,0.18);
+              animation: cityPulse 2s ease-out infinite;
+            "></div>
+            <div style="
+              position: relative;
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background: #2563EB;
+              border: 2.5px solid #ffffff;
+              box-shadow: 0 0 10px rgba(37,99,235,0.9), 0 0 4px rgba(37,99,235,0.6);
+            "></div>
+          </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+
+      const marker = L.marker(pos, { icon })
+        .addTo(map)
+        .bindTooltip(`${city.name} — Click to zoom in`, {
+          direction: 'top',
+          offset: [0, -14],
+          opacity: 1,
+        });
+
+      marker.on('click', () => onCityClick?.(city.id));
+      markers.push(marker);
+    });
+
+    return () => markers.forEach((m) => m.remove());
+  }, [cities, map, onCityClick]);
+
+  return null;
+};
+
+export default CityStationsLayer;

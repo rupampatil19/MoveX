@@ -1,0 +1,48 @@
+// ============================================================
+// MOVEX — Backend Region Hierarchy
+// ============================================================
+// Mirrors frontend/src/data/nationalGeoConfig.js
+// Keep both in sync when adding new cities.
+// ============================================================
+
+const REGION_HIERARCHY = {
+  // ---- Pune (Maharashtra) ----
+  Kothrud:         { city: 'pune', state: 'MH', country: 'IN' },
+  Hinjewadi:       { city: 'pune', state: 'MH', country: 'IN' },
+  Baner:           { city: 'pune', state: 'MH', country: 'IN' },
+  'Shivaji Nagar': { city: 'pune', state: 'MH', country: 'IN' },
+  'Viman Nagar':   { city: 'pune', state: 'MH', country: 'IN' },
+  Hadapsar:        { city: 'pune', state: 'MH', country: 'IN' },
+  Pimpri:          { city: 'pune', state: 'MH', country: 'IN' },
+
+  // Future cities — add here when Phase 3 begins
+};
+
+const CITY_HIERARCHY = {
+  pune: { state: 'MH', country: 'IN', name: 'Pune' },
+};
+
+const STATE_HIERARCHY = {
+  MH: { country: 'IN', name: 'Maharashtra' },
+};
+
+function getHierarchy(regionId) {
+  return REGION_HIERARCHY[regionId] || { city: null, state: null, country: 'IN' };
+}
+
+function getCityInfo(cityId) {
+  return CITY_HIERARCHY[cityId] || null;
+}
+
+function getStateInfo(stateId) {
+  return STATE_HIERARCHY[stateId] || null;
+}
+
+module.exports = {
+  REGION_HIERARCHY,
+  CITY_HIERARCHY,
+  STATE_HIERARCHY,
+  getHierarchy,
+  getCityInfo,
+  getStateInfo,
+};

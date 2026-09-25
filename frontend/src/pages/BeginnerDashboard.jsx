@@ -3,18 +3,23 @@ import { Link } from 'react-router-dom';
 import API from '../api';
 import { motion } from 'framer-motion';
 import {
-  Flame, Trophy, Zap, Activity, Clock, Gift, Target, TrendingUp, ArrowRight, MapPin
+  Flame, Trophy, Zap, Activity, Clock, Gift, Target, TrendingUp, ArrowRight, MapPin, Users
 } from 'lucide-react';
 import DashboardMap from '../components/DashboardMap';
+import { useTrophy } from '../context/TrophyContext';
 
 const BeginnerDashboard = ({ user }) => {
   const [activities, setActivities] = useState([]);
   const [form, setForm] = useState({ type: 'running', distance: 0, duration: 0 });
   const [currentUser, setCurrentUser] = useState(user);
+  const [clan, setClan] = useState(null);
+
+  const { balance: trophyBalance, loading: trophyLoading } = useTrophy();
 
   useEffect(() => {
     fetchUser();
     fetchActivities();
+    fetchClan();
   }, []);
 
   const fetchUser = async () => {
@@ -35,10 +40,23 @@ const BeginnerDashboard = ({ user }) => {
     }
   };
 
+  const fetchClan = async () => {
+    try {
+      const res = await API.get('/clans/my');
+      if (res.data?.clan) setClan(res.data.clan);
+    } catch (err) {
+      // no clan
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/activity', { ...form, distance: Number(form.distance), duration: Number(form.duration) });
+      await API.post('/activity', {
+        ...form,
+        distance: Number(form.distance),
+        duration: Number(form.duration),
+      });
       fetchActivities();
       setForm({ type: 'running', distance: 0, duration: 0 });
       alert('Activity logged!');
@@ -48,59 +66,126 @@ const BeginnerDashboard = ({ user }) => {
     }
   };
 
+  const displayTrophies = trophyLoading
+    ? (currentUser?.trophyPoints ?? 0)
+    : (trophyBalance ?? currentUser?.trophyPoints ?? 0);
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      {/* Hero */}
-      <div className="bg-[#2563EB] text-white rounded-3xl p-6 md:p-8 shadow-sm">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">Move More. Earn More. Grow Stronger.</h1>
-        <p className="text-white/80 mb-4">Stay consistent, complete your quests, and build your personal fitness journey.</p>
-        <Link to="/start" className="inline-flex items-center gap-2 bg-white text-[#2563EB] font-semibold px-5 py-2 rounded-full hover:bg-gray-100 transition">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-4 sm:space-y-6 pb-24 md:pb-6"
+    >
+      {/* ================= HERO — compact on mobile ================= */}
+      <div className="bg-[#2563EB] text-white rounded-3xl p-5 sm:p-6 md:p-8 shadow-sm">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight mb-2 md:mb-2">
+          Move, compete and grow together
+        </h1>
+        <p className="text-sm sm:text-base text-white/80 mb-3 md:mb-4">
+          Stay consistent, complete your quests, and build your personal fitness journey.
+        </p>
+        <Link
+          to="/start"
+          className="inline-flex items-center gap-2 bg-white text-[#2563EB] font-semibold px-4 sm:px-5 py-2 rounded-full hover:bg-gray-100 transition text-sm sm:text-base"
+        >
           Start Activity <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
 
-      {/* Main two-column layout */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left column: Map */}
-        <div className="lg:w-1/3">
+      {/* ================= MAIN LAYOUT ================= */}
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
+        {/* Left: Map */}
+        <div className="w-full lg:w-1/3">
           <DashboardMap userRegion={currentUser?.region} />
         </div>
 
-        {/* Right column: All other content */}
-        <div className="lg:w-2/3 space-y-6">
+        {/* Right: metrics + content */}
+        <div className="w-full lg:w-2/3 space-y-4 md:space-y-6">
           {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-[#2563EB] mb-1"><Zap className="w-5 h-5" /><span className="text-sm text-gray-500">Energy</span></div>
-              <p className="text-2xl font-bold text-gray-800">{currentUser?.energy || 0}</p>
+              <div className="flex items-center gap-2 text-[#2563EB] mb-1">
+                <Zap className="w-5 h-5" />
+                <span className="text-sm text-gray-500">Energy</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-800">
+                {currentUser?.energy || 0}
+              </p>
             </div>
+
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-[#2563EB] mb-1"><Trophy className="w-5 h-5" /><span className="text-sm text-gray-500">Trophies</span></div>
-              <p className="text-2xl font-bold text-gray-800">{currentUser?.trophies?.length || 0}</p>
+              <div className="flex items-center gap-2 text-[#2563EB] mb-1">
+                <Trophy className="w-5 h-5" />
+                <span className="text-sm text-gray-500">Trophies</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-800">{displayTrophies}</p>
             </div>
+
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-orange-500 mb-1"><Flame className="w-5 h-5" /><span className="text-sm text-gray-500">Streak</span></div>
-              <p className="text-2xl font-bold text-gray-800">{currentUser?.streak || 0} Days</p>
+              <div className="flex items-center gap-2 text-orange-500 mb-1">
+                <Flame className="w-5 h-5" />
+                <span className="text-sm text-gray-500">Streak</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-800">
+                {currentUser?.streak || 0} Days
+              </p>
             </div>
+
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-[#2563EB] mb-1"><TrendingUp className="w-5 h-5" /><span className="text-sm text-gray-500">Level</span></div>
-              <p className="text-2xl font-bold text-gray-800">{currentUser?.level || 1}</p>
+              <div className="flex items-center gap-2 text-[#2563EB] mb-1">
+                <TrendingUp className="w-5 h-5" />
+                <span className="text-sm text-gray-500">Level</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-800">
+                {currentUser?.level || 1}
+              </p>
             </div>
+
+            {/* My Clan */}
+            <Link
+              to="/clan"
+              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition block col-span-2 md:col-span-1"
+            >
+              <div className="flex items-center gap-2 text-[#2563EB] mb-1">
+                <Users className="w-5 h-5" />
+                <span className="text-sm text-gray-500">My Clan</span>
+              </div>
+              <p className="text-sm font-bold text-gray-800 truncate">
+                {clan?.name || 'No Clan Yet'}
+              </p>
+              <p className="text-xs text-[#2563EB] mt-1">
+                {clan ? 'View clan →' : 'Join a clan →'}
+              </p>
+            </Link>
           </div>
 
           {/* Quest + AI Coach */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2"><Target className="w-5 h-5 text-[#2563EB]" /> Today's Quest</h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <Target className="w-5 h-5 text-[#2563EB]" /> Today's Quest
+              </h2>
               <div className="space-y-2">
-                <div className="flex justify-between p-2 bg-gray-50 rounded-lg"><span className="text-sm text-gray-700">Complete 20 min activity</span><span className="text-sm text-[#2563EB]">In Progress</span></div>
-                <div className="flex justify-between p-2 bg-gray-50 rounded-lg"><span className="text-sm text-gray-700">Maintain streak</span><span className="text-sm text-gray-500">Pending</span></div>
+                <div className="flex justify-between p-2 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-700">Complete 20 min activity</span>
+                  <span className="text-sm text-[#2563EB]">In Progress</span>
+                </div>
+                <div className="flex justify-between p-2 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-700">Maintain streak</span>
+                  <span className="text-sm text-gray-500">Pending</span>
+                </div>
               </div>
             </div>
+
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-800 mb-2">AI Coach</h2>
-              <p className="text-sm text-gray-600">"Great work on your consistency! You're one activity away from completing your weekly goal."</p>
-              <Link to="/ai-coach" className="text-[#2563EB] text-sm font-medium mt-2 inline-block">Chat with Coach</Link>
+              <p className="text-sm text-gray-600">
+                "Great work on your consistency! You're one activity away from completing
+                your weekly goal."
+              </p>
+              <Link to="/ai-coach" className="text-[#2563EB] text-sm font-medium mt-2 inline-block">
+                Chat with Coach
+              </Link>
             </div>
           </div>
 
@@ -109,22 +194,49 @@ const BeginnerDashboard = ({ user }) => {
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-800 mb-2">Log Activity</h2>
               <form onSubmit={handleSubmit} className="space-y-2">
-                <select value={form.type} onChange={(e) => setForm({...form, type: e.target.value})} className="w-full p-2 border rounded">
+                <select
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  className="w-full p-2 border rounded"
+                >
                   <option value="running">Running</option>
                   <option value="cycling">Cycling</option>
                   <option value="walking">Walking</option>
                 </select>
-                <input type="number" placeholder="Distance (km)" value={form.distance} onChange={(e) => setForm({...form, distance: e.target.value})} className="w-full p-2 border rounded" />
-                <input type="number" placeholder="Duration (min)" value={form.duration} onChange={(e) => setForm({...form, duration: e.target.value})} className="w-full p-2 border rounded" />
-                <button type="submit" className="w-full bg-[#2563EB] text-white py-2 rounded">Save</button>
+                <input
+                  type="number"
+                  placeholder="Distance (km)"
+                  value={form.distance}
+                  onChange={(e) => setForm({ ...form, distance: e.target.value })}
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  type="number"
+                  placeholder="Duration (min)"
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                  className="w-full p-2 border rounded"
+                />
+                <button type="submit" className="w-full bg-[#2563EB] text-white py-2 rounded">
+                  Save
+                </button>
               </form>
             </div>
+
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-800 mb-2">Recent Activities</h2>
-              {activities.length === 0 ? <p className="text-sm text-gray-500">No activities yet.</p> : (
+              {activities.length === 0 ? (
+                <p className="text-sm text-gray-500">No activities yet.</p>
+              ) : (
                 <ul className="space-y-1">
-                  {activities.slice(0,5).map(act => (
-                    <li key={act._id} className="flex justify-between text-sm text-gray-700"><span>{act.type}</span><span>{act.distance} km</span></li>
+                  {activities.slice(0, 5).map((act) => (
+                    <li
+                      key={act._id}
+                      className="flex justify-between text-sm text-gray-700"
+                    >
+                      <span>{act.type}</span>
+                      <span>{act.distance} km</span>
+                    </li>
                   ))}
                 </ul>
               )}

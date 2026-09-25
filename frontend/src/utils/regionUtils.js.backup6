@@ -1,0 +1,107 @@
+// Seven official Pune region centers and colors.
+// Boundaries are generated dynamically in MapPage/DashboardMap using a wavy sector partition.
+// Supports any city via optional centerOverride.
+
+export const CENTER = { lat: 18.56, lng: 73.85 }; // Pune default
+const OUTER_RADIUS = 0.15;
+
+function project(lat, lng, C) {
+  return { x: (lng - C.lng) * Math.cos((C.lat * Math.PI) / 180), y: lat - C.lat };
+}
+function unproject(x, y, C) {
+  return [y + C.lat, x / Math.cos((C.lat * Math.PI) / 180) + C.lng];
+}
+function angleOf(lat, lng, C) {
+  const p = project(lat, lng, C);
+  return Math.atan2(p.y, p.x);
+}
+
+export function generateRegionPolygons(REGIONS, centerOverride) {
+  const C = centerOverride || CENTER;
+  const n = REGIONS.length;
+  if (n === 0) return {};
+
+  // 1. Compute each region's absolute angle in [0, 2π)
+  const regionData = REGIONS.map((r, i) => {
+    let a = angleOf(r.center[0], r.center[1], C);
+    if (a < 0) a += 2 * Math.PI;
+    return { index: i, region: r, angle: a };
+  });
+
+  // 2. Sort by angle
+  regionData.sort((a, b) => a.angle - b.angle);
+  const sortedAngles = regionData.map((d) => d.angle);
+
+  const polygons = {};
+
+  for (let k = 0; k < n; k++) {
+    const { region, angle: aCurr } = regionData[k];
+
+    // 3. Unwrap neighbor angles so prev < curr < next
+    let aPrev = k === 0 ? sortedAngles[n - 1] - 2 * Math.PI : sortedAngles[k - 1];
+    let aNext = k === n - 1 ? sortedAngles[0] + 2 * Math.PI : sortedAngles[k + 1];
+
+    // Ensure strict ordering (safety for degenerate cases)
+    if (aPrev >= aCurr) aPrev -= 2 * Math.PI;
+    if (aNext <= aCurr) aNext += 2 * Math.PI;
+
+    // 4. Sector boundaries are the midpoint angles between neighbors
+    const startAngle = (aPrev + aCurr) / 2;
+    const endAngle = (aCurr + aNext) / 2;
+
+    // 5. Draw wedge from startAngle → endAngle (radians, may exceed 2π)
+    const steps = 10;
+    const arcSteps = 20;
+    const points = [];
+    points.push([C.lat, C.lng]);
+
+    // Radial edge along startAngle (center → rim)
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps;
+      const r = OUTER_RADIUS * t;
+      const wave = Math.sin(t * Math.PI * 3) * 0.006;
+      const perpAngle = startAngle + Math.PI / 2;
+      const x = Math.cos(startAngle) * r + Math.cos(perpAngle) * wave;
+      const y = Math.sin(startAngle) * r + Math.sin(perpAngle) * wave;
+      points.push(unproject(x, y, C));
+    }
+
+    // Outer arc from startAngle to endAngle
+    const angularSpan = endAngle - startAngle;
+    for (let s = 1; s < arcSteps; s++) {
+      const t = s / arcSteps;
+      const angle = startAngle + angularSpan * t;
+      const outerWave = Math.sin(t * Math.PI * 5) * 0.005;
+      const r = OUTER_RADIUS + outerWave;
+      const x = Math.cos(angle) * r;
+      const y = Math.sin(angle) * r;
+      points.push(unproject(x, y, C));
+    }
+
+    // Radial edge along endAngle (rim → center)
+    for (let s = steps; s >= 0; s--) {
+      const t = s / steps;
+      const r = OUTER_RADIUS * t;
+      const wave = Math.sin(t * Math.PI * 3 + 1) * 0.006;
+      const perpAngle = endAngle + Math.PI / 2;
+      const x = Math.cos(endAngle) * r + Math.cos(perpAngle) * wave;
+      const y = Math.sin(endAngle) * r + Math.sin(perpAngle) * wave;
+      points.push(unproject(x, y, C));
+    }
+
+    polygons[region.id] = points;
+  }
+
+  return polygons;
+}
+
+export function calculateCentroid(coords) {
+  if (!coords || coords.length === 0) return [CENTER.lat, CENTER.lng];
+  let latSum = 0;
+  let lngSum = 0;
+  coords.forEach(([lat, lng]) => {
+    latSum += lat;
+    lngSum += lng;
+  });
+  return [latSum / coords.length, lngSum / coords.length];
+}

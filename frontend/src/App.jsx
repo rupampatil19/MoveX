@@ -22,6 +22,7 @@ import QuestsPage from './pages/QuestsPage';
 import EventsPage from './pages/EventsPage';
 import MapPage from './pages/MapPage';
 import DashboardLayout from './components/layout/DashboardLayout';
+import { TrophyProvider } from './context/TrophyContext';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -41,7 +42,8 @@ function App() {
   const DashboardComponent = user?.accountType === 'PRO' ? ProDashboard : BeginnerDashboard;
 
   return (
-    <BrowserRouter>
+    <TrophyProvider>
+      <BrowserRouter>
       <Routes>
         <Route path="/login" element={!user ? <Login setUser={setUser} /> : <Navigate to="/" />} />
         <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
@@ -81,7 +83,8 @@ function App() {
           }
         />
       </Routes>
-    </BrowserRouter>
+     </BrowserRouter>
+    </TrophyProvider>
   );
 }
 

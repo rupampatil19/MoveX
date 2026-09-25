@@ -1,0 +1,139 @@
+// ============================================================
+// MOVEX REGION CONFIG — all supported metro cities
+// Regional geometry is generated dynamically in regionUtils.js
+// ============================================================
+
+export const PUNE_REGIONS = [
+  { id: 'Kothrud',       center: [18.46, 73.80], color: '#4CAF50' },
+  { id: 'Hinjewadi',     center: [18.56, 73.76], color: '#2196F3' },
+  { id: 'Baner',         center: [18.64, 73.88], color: '#9C27B0' },
+  { id: 'Shivaji Nagar', center: [18.52, 73.88], color: '#E91E63' },
+  { id: 'Viman Nagar',   center: [18.62, 73.96], color: '#FF9800' },
+  { id: 'Hadapsar',      center: [18.49, 73.94], color: '#00BCD4' },
+  { id: 'Pimpri',        center: [18.66, 73.76], color: '#FF5722' },
+];
+
+export const BENGALURU_REGIONS = [
+  { id: 'Koramangala', center: [12.9352, 77.6245], color: '#4CAF50' },
+  { id: 'HSR Layout',  center: [12.8950, 77.6200], color: '#FF9800' },
+  { id: 'Jayanagar',   center: [12.9250, 77.5938], color: '#E91E63' },
+  { id: 'Indiranagar', center: [12.9900, 77.6400], color: '#9C27B0' },
+  { id: 'Whitefield',  center: [12.9698, 77.7500], color: '#2196F3' },
+];
+
+export const MUMBAI_REGIONS = [
+  { id: 'Thane',    center: [19.25, 73.05], color: '#4CAF50' }, // E
+  { id: 'Powai',    center: [19.10, 72.98], color: '#FF9800' }, // E-SE
+  { id: 'Borivali', center: [19.25, 72.86], color: '#2196F3' }, // N
+  { id: 'Andheri',  center: [19.13, 72.77], color: '#9C27B0' }, // NW
+  { id: 'Bandra',   center: [19.02, 72.76], color: '#E91E63' }, // SW
+  { id: 'Colaba',   center: [18.88, 72.82], color: '#00BCD4' }, // S
+  { id: 'Dadar',    center: [18.96, 72.90], color: '#FF5722' }, // SE
+];
+
+export const DELHI_REGIONS = [
+  { id: 'Connaught Place', center: [28.63, 77.24], color: '#4CAF50' }, // E-NE
+  { id: 'Chandni Chowk',   center: [28.65, 77.23], color: '#FF9800' }, // NNE
+  { id: 'Rohini',          center: [28.78, 77.10], color: '#2196F3' }, // N-NW
+  { id: 'Karol Bagh',      center: [28.67, 77.05], color: '#9C27B0' }, // W-NW
+  { id: 'Dwarka',          center: [28.59, 77.05], color: '#E91E63' }, // SW
+  { id: 'Saket',           center: [28.50, 77.15], color: '#00BCD4' }, // S
+  { id: 'Lajpat Nagar',    center: [28.55, 77.28], color: '#FF5722' }, // SE
+];
+
+export const HYDERABAD_REGIONS = [
+  { id: 'Uppal',       center: [17.40, 78.57], color: '#4CAF50' }, // E
+  { id: 'Secunderabad',center: [17.44, 78.51], color: '#FF9800' }, // NE
+  { id: 'Begumpet',    center: [17.46, 78.48], color: '#2196F3' }, // N
+  { id: 'Kukatpally',  center: [17.50, 78.37], color: '#9C27B0' }, // NW
+  { id: 'Gachibowli',  center: [17.42, 78.32], color: '#E91E63' }, // W
+  { id: 'Mehdipatnam', center: [17.28, 78.43], color: '#00BCD4' }, // SW
+  { id: 'LB Nagar',    center: [17.31, 78.58], color: '#FF5722' }, // SE
+];
+export const CHENNAI_REGIONS = [
+  { id: 'Ennore',     center: [13.20, 80.33], color: '#4CAF50' }, // NE
+  { id: 'Anna Nagar', center: [13.09, 80.18], color: '#2196F3' }, // NW
+  { id: 'T Nagar',    center: [13.04, 80.19], color: '#9C27B0' }, // W-SW
+  { id: 'Tambaram',   center: [12.85, 80.10], color: '#FF9800' }, // SW
+  { id: 'Velachery',  center: [12.89, 80.22], color: '#E91E63' }, // S
+  { id: 'Adyar',      center: [12.98, 80.28], color: '#00BCD4' }, // SE
+];
+
+export const KOLKATA_REGIONS = [
+  { id: 'New Town',    center: [22.60, 88.52], color: '#4CAF50' }, // E-NE
+  { id: 'Dum Dum',     center: [22.67, 88.47], color: '#2196F3' }, // N-NE
+  { id: 'Howrah',      center: [22.65, 88.22], color: '#9C27B0' }, // NW
+  { id: 'Park Street', center: [22.55, 88.33], color: '#E91E63' }, // SW
+  { id: 'Ballygunge',  center: [22.52, 88.37], color: '#FF9800' }, // S
+  { id: 'Salt Lake',   center: [22.55, 88.44], color: '#00BCD4' }, // SE
+];
+export const AHMEDABAD_REGIONS = [
+  { id: 'Gandhinagar', center: [23.25, 72.65], color: '#4CAF50' }, // NE
+  { id: 'Chandkheda',  center: [23.12, 72.55], color: '#2196F3' }, // N
+  { id: 'Satellite',   center: [22.98, 72.42], color: '#9C27B0' }, // W-SW
+  { id: 'Vatva',       center: [22.92, 72.65], color: '#FF9800' }, // SE
+  { id: 'Maninagar',   center: [22.98, 72.70], color: '#E91E63' }, // E-SE
+];
+
+export const CITY_REGIONS = {
+  pune: PUNE_REGIONS,
+  bengaluru: BENGALURU_REGIONS,
+  mumbai: MUMBAI_REGIONS,
+  delhi: DELHI_REGIONS,
+  hyderabad: HYDERABAD_REGIONS,
+  chennai: CHENNAI_REGIONS,
+  kolkata: KOLKATA_REGIONS,
+  ahmedabad: AHMEDABAD_REGIONS,
+};
+
+// ============================================================
+// REGION-LEVEL PROGRESSION
+// ============================================================
+export const REGION_LEVEL_THRESHOLDS = [0, 20000, 50000, 100000, 200000];
+export const BUILDING_NAMES = ['Tide Hut', 'Wave Dock', 'Aqua Bastion', 'Ocean Citadel', "Poseidon's Hub"];
+export const BUILDING_EMOJIS = ['🛖', '⚓', '🏰', '🛯', '🔱'];
+
+export function getRegionLevel(totalEnergy) {
+  let level = 1;
+  for (let i = 0; i < REGION_LEVEL_THRESHOLDS.length; i++) {
+    if (totalEnergy >= REGION_LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return Math.min(level, 5);
+}
+
+export function getBuildingName(totalEnergy) {
+  return BUILDING_NAMES[getRegionLevel(totalEnergy) - 1];
+}
+
+export function getBuildingEmoji(totalEnergy) {
+  return BUILDING_EMOJIS[getRegionLevel(totalEnergy) - 1];
+}
+
+export function getRegionById(regionId) {
+  const all = Object.values(CITY_REGIONS).flat();
+  return all.find((r) => r.id === regionId);
+}
+
+// ============================================================
+// CITY-LEVEL PROGRESSION
+// ============================================================
+export const CITY_LEVEL_THRESHOLDS = [0, 100000, 250000, 500000, 1000000];
+
+export function getCityLevel(totalEnergy) {
+  let level = 1;
+  for (let i = 0; i < CITY_LEVEL_THRESHOLDS.length; i++) {
+    if (totalEnergy >= CITY_LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return Math.min(level, 5);
+}
+
+export function getCityRequiredEnergy(level) {
+  const safe = Math.min(Math.max(level, 1), 5);
+  return CITY_LEVEL_THRESHOLDS[safe - 1];
+}
+
+// ============================================================
+// HUB ASSET HELPERS
+// ============================================================
+import { getHubImagePath, getHubName } from './hubAssets';
+export { getHubImagePath, getHubName };
