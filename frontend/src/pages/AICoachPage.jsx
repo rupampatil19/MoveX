@@ -69,17 +69,12 @@ const AICoachPage = ({ user }) => {
 
   const firstName = user?.name?.split(' ')[0] || 'Athlete';
 
-  // Load conversations on mount
   useEffect(() => {
     (async () => {
       try {
         const list = await listConversations();
         setConversations(list);
-        // Only auto-open a conversation that actually has content.
-        // Skip abandoned empty "New Chat" rows from earlier sessions.
-        const firstReal = list.find(
-          (c) => c.title && c.title !== 'New Chat'
-        );
+        const firstReal = list.find((c) => c.title && c.title !== 'New Chat');
         if (firstReal) {
           await openConversation(firstReal._id);
         }
@@ -92,7 +87,6 @@ const AICoachPage = ({ user }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-scroll to newest message
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, sending, failedText]);
@@ -113,8 +107,6 @@ const AICoachPage = ({ user }) => {
   };
 
   const handleNewChat = () => {
-    // Always start a fresh conversation on the client side.
-    // The DB record is created lazily when the first message is sent.
     setActiveConvId(null);
     setMessages([]);
     setFailedText(null);
@@ -265,8 +257,6 @@ const AICoachPage = ({ user }) => {
   const grouped = useMemo(() => groupConversations(conversations), [conversations]);
   const showWelcome = !loadingConv && messages.length === 0;
 
-  // ----- Render helpers -----
-
   const ConversationItem = ({ conv, onDelete, onRename }) => {
     const isActive = conv._id === activeConvId;
     const menuOpen = menuOpenId === conv._id;
@@ -274,10 +264,10 @@ const AICoachPage = ({ user }) => {
     return (
       <div className="relative">
         <div
-          className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+          className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
             isActive
-              ? 'bg-[#2563EB]/10 text-[#2563EB]'
-              : 'text-gray-700 hover:bg-gray-100'
+              ? 'bg-[#2563EB]/15 text-[#2563EB] border border-[#2563EB]/20'
+              : 'text-gray-700 hover:bg-white/50 border border-transparent'
           }`}
           onClick={() => openConversation(conv._id)}
         >
@@ -290,10 +280,8 @@ const AICoachPage = ({ user }) => {
               e.stopPropagation();
               setMenuOpenId(menuOpen ? null : conv._id);
             }}
-            className={`p-1 rounded hover:bg-gray-200/70 transition-opacity ${
-              isActive || menuOpen
-                ? 'opacity-100'
-                : 'opacity-0 group-hover:opacity-100'
+            className={`p-1 rounded hover:bg-white/60 transition-opacity ${
+              isActive || menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             }`}
             aria-label="More options"
           >
@@ -311,12 +299,12 @@ const AICoachPage = ({ user }) => {
               }}
             />
             <div
-              className="absolute right-1 top-9 z-30 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[120px]"
+              className="absolute right-1 top-9 z-30 glass-strong rounded-lg py-1 min-w-[120px]"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => onRename(conv)}
-                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-white/50 flex items-center gap-2"
               >
                 <Pencil className="w-3 h-3" /> Rename
               </button>
@@ -325,7 +313,7 @@ const AICoachPage = ({ user }) => {
                   setMenuOpenId(null);
                   onDelete();
                 }}
-                className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50/60 flex items-center gap-2"
               >
                 <Trash2 className="w-3 h-3" /> Delete
               </button>
@@ -349,7 +337,7 @@ const AICoachPage = ({ user }) => {
         if (items.length === 0) return null;
         return (
           <div key={label}>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2.5 mb-1.5">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-2.5 mb-1.5">
               {label}
             </p>
             <div className="space-y-0.5">
@@ -370,13 +358,13 @@ const AICoachPage = ({ user }) => {
 
   const Welcome = () => (
     <div className="flex flex-col items-center justify-center text-center py-8 px-4">
-      <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 flex items-center justify-center mb-3">
-        <Bot className="w-7 h-7 text-[#2563EB]" />
+      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] shadow-lg shadow-[#2563EB]/30 flex items-center justify-center mb-4">
+        <Bot className="w-8 h-8 text-white" />
       </div>
       <h2 className="text-lg font-semibold text-gray-800 mb-1">
         Hello {firstName}!
       </h2>
-      <p className="text-sm text-gray-500 max-w-sm mb-5">
+      <p className="text-sm text-gray-600 max-w-sm mb-5">
         I'm your MoveX AI Coach. Ask me about your workouts, goals, progress,
         recovery or MoveX journey.
       </p>
@@ -385,7 +373,7 @@ const AICoachPage = ({ user }) => {
           <button
             key={p.label}
             onClick={() => handleSend(p.text)}
-            className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-[#2563EB]/10 hover:text-[#2563EB] text-gray-600 text-xs font-medium transition-colors"
+            className="px-3.5 py-2 rounded-full glass-subtle hover:bg-white/70 hover:text-[#2563EB] text-gray-700 text-xs font-medium transition-all"
           >
             {p.label}
           </button>
@@ -399,7 +387,7 @@ const AICoachPage = ({ user }) => {
     if (isUser) {
       return (
         <div className="flex justify-end">
-          <div className="max-w-[85%] sm:max-w-[75%] bg-[#2563EB] text-white px-4 py-2.5 rounded-2xl rounded-br-md text-sm whitespace-pre-wrap break-words">
+          <div className="max-w-[85%] sm:max-w-[75%] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white px-4 py-2.5 rounded-2xl rounded-br-md text-sm whitespace-pre-wrap break-words shadow-lg shadow-[#2563EB]/25">
             {msg.content}
           </div>
         </div>
@@ -407,11 +395,11 @@ const AICoachPage = ({ user }) => {
     }
     return (
       <div className="flex gap-2.5">
-        <div className="w-7 h-7 rounded-full bg-[#2563EB]/10 flex items-center justify-center shrink-0 mt-0.5">
-          <Bot className="w-4 h-4 text-[#2563EB]" />
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shrink-0 mt-0.5 shadow-md">
+          <Bot className="w-4 h-4 text-white" />
         </div>
-        <div className="max-w-[85%] sm:max-w-[75%] bg-gray-50 text-gray-800 px-4 py-2.5 rounded-2xl rounded-tl-md text-sm break-words">
-          <div className="text-sm leading-relaxed [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_h1]:text-base [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mb-1 [&_strong]:font-semibold [&_code]:bg-gray-200/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
+        <div className="max-w-[85%] sm:max-w-[75%] glass rounded-2xl rounded-tl-md px-4 py-2.5 text-sm break-words">
+          <div className="text-sm leading-relaxed text-gray-800 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_h1]:text-base [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mb-1 [&_strong]:font-semibold [&_code]:bg-white/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
             <ReactMarkdown>{msg.content}</ReactMarkdown>
           </div>
         </div>
@@ -421,14 +409,14 @@ const AICoachPage = ({ user }) => {
 
   const TypingBubble = () => (
     <div className="flex gap-2.5">
-      <div className="w-7 h-7 rounded-full bg-[#2563EB]/10 flex items-center justify-center shrink-0 mt-0.5">
-        <Bot className="w-4 h-4 text-[#2563EB]" />
+      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shrink-0 mt-0.5 shadow-md">
+        <Bot className="w-4 h-4 text-white" />
       </div>
-      <div className="bg-gray-50 px-4 py-3 rounded-2xl rounded-tl-md flex items-center gap-1">
+      <div className="glass px-4 py-3 rounded-2xl rounded-tl-md flex items-center gap-1">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-gray-400"
+            className="w-1.5 h-1.5 rounded-full bg-[#2563EB]"
             style={{
               animation: 'ai-pulse 1.2s ease-in-out infinite',
               animationDelay: `${i * 0.15}s`,
@@ -441,7 +429,7 @@ const AICoachPage = ({ user }) => {
 
   const RetryBanner = () => (
     <div className="flex justify-center">
-      <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
+      <div className="glass rounded-lg px-3 py-2 flex items-center gap-2 text-red-700 text-xs border border-red-200/50">
         <span>Your MoveX Coach couldn't respond right now.</span>
         <button
           onClick={handleRetry}
@@ -465,13 +453,13 @@ const AICoachPage = ({ user }) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <style>{`@keyframes ai-pulse { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }`}</style>
 
-      <div className="flex h-[calc(100dvh-200px)] md:h-[calc(100vh-140px)] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex h-[calc(100dvh-200px)] md:h-[calc(100vh-140px)] glass rounded-3xl overflow-hidden">
         {/* DESKTOP SIDEBAR */}
-        <aside className="hidden md:flex md:w-64 flex-col border-r border-gray-100 bg-gray-50/40">
-          <div className="p-3 border-b border-gray-100">
+        <aside className="hidden md:flex md:w-64 flex-col border-r border-white/40 bg-white/20">
+          <div className="p-3 border-b border-white/40">
             <button
               onClick={handleNewChat}
-              className="w-full flex items-center justify-center gap-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg py-2.5 text-sm font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1e40af] text-white rounded-xl py-2.5 text-sm font-medium transition-all shadow-lg shadow-[#2563EB]/25"
             >
               <Plus className="w-4 h-4" />
               New Chat
@@ -481,9 +469,9 @@ const AICoachPage = ({ user }) => {
         </aside>
 
         {/* MAIN CHAT PANEL */}
-        <main className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0 bg-white/10">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-white/40">
             <button
               onClick={() => setDrawerOpen(true)}
               className="md:hidden p-1 -ml-1 text-gray-600 hover:text-gray-900"
@@ -491,13 +479,15 @@ const AICoachPage = ({ user }) => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <Bot className="w-5 h-5 text-[#2563EB] shrink-0" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shrink-0 shadow-md">
+              <Bot className="w-4 h-4 text-white" />
+            </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-sm font-semibold text-gray-800 truncate">
                 AI Coach
               </h1>
               <p className="text-[11px] text-green-600 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                 Ready
               </p>
             </div>
@@ -522,7 +512,7 @@ const AICoachPage = ({ user }) => {
           </div>
 
           {/* Input */}
-          <div className="border-t border-gray-100 p-3 sm:p-4">
+          <div className="border-t border-white/40 p-3 sm:p-4 bg-white/20 backdrop-blur-xl">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -537,14 +527,14 @@ const AICoachPage = ({ user }) => {
                 onKeyDown={handleKeyDown}
                 placeholder="Ask your MoveX Coach..."
                 rows={1}
-                className="flex-1 resize-none bg-gray-100 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB]/50 transition-all"
+                className="flex-1 resize-none glass-input rounded-2xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-500 transition-all"
                 style={{ maxHeight: '120px' }}
                 disabled={sending}
               />
               <button
                 type="submit"
                 disabled={!input.trim() || sending}
-                className="bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed text-white p-2.5 rounded-full transition-colors shrink-0"
+                className="bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1e40af] disabled:opacity-40 disabled:cursor-not-allowed text-white p-2.5 rounded-full transition-all shadow-lg shadow-[#2563EB]/30 shrink-0"
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
@@ -563,7 +553,7 @@ const AICoachPage = ({ user }) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 bg-black/40 z-40 md:hidden"
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden"
                 onClick={() => setDrawerOpen(false)}
               />
               <motion.aside
@@ -571,20 +561,20 @@ const AICoachPage = ({ user }) => {
                 initial={{ x: '-100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
-                transition={{ type: 'tween', duration: 0.2 }}
-                className="fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-white z-50 md:hidden flex flex-col shadow-2xl"
+                transition={{ type: 'tween', duration: 0.25 }}
+                className="fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] glass-strong z-50 md:hidden flex flex-col shadow-2xl"
               >
-                <div className="p-3 border-b border-gray-100 flex items-center gap-2">
+                <div className="p-3 border-b border-white/40 flex items-center gap-2">
                   <button
                     onClick={handleNewChat}
-                    className="flex-1 flex items-center justify-center gap-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg py-2.5 text-sm font-medium transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white rounded-xl py-2.5 text-sm font-medium transition-all shadow-lg shadow-[#2563EB]/25"
                   >
                     <Plus className="w-4 h-4" />
                     New Chat
                   </button>
                   <button
                     onClick={() => setDrawerOpen(false)}
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+                    className="p-2 rounded-lg hover:bg-white/40 text-gray-500"
                     aria-label="Close"
                   >
                     <X className="w-5 h-5" />
@@ -605,7 +595,7 @@ const AICoachPage = ({ user }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setRenameTarget(null)}
           >
             <motion.div
@@ -613,7 +603,7 @@ const AICoachPage = ({ user }) => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl"
+              className="glass-strong rounded-2xl p-5 max-w-sm w-full shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-base font-semibold text-gray-800 mb-3">
@@ -629,22 +619,22 @@ const AICoachPage = ({ user }) => {
                 }}
                 maxLength={60}
                 autoFocus
-                className="w-full bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB]/50"
+                className="w-full glass-input rounded-lg px-3 py-2 text-sm text-gray-800"
               />
-              <p className="text-[11px] text-gray-400 mt-1 mb-4">
+              <p className="text-[11px] text-gray-500 mt-1 mb-4">
                 {renameValue.length}/60 characters
               </p>
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => setRenameTarget(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white/50 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleRenameSave}
                   disabled={!renameValue.trim()}
-                  className="px-4 py-2 text-sm font-medium bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1e40af] disabled:opacity-40 text-white rounded-lg transition-all shadow-md shadow-[#2563EB]/25"
                 >
                   Save
                 </button>
@@ -662,7 +652,7 @@ const AICoachPage = ({ user }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setDeleteTarget(null)}
           >
             <motion.div
@@ -670,26 +660,26 @@ const AICoachPage = ({ user }) => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl"
+              className="glass-strong rounded-2xl p-5 max-w-sm w-full shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-base font-semibold text-gray-800 mb-1">
                 Delete this conversation?
               </h3>
-              <p className="text-sm text-gray-500 mb-5">
+              <p className="text-sm text-gray-600 mb-5">
                 This action cannot be undone. All messages in this
                 conversation will be permanently removed.
               </p>
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white/50 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all shadow-md shadow-red-500/25"
                 >
                   Delete
                 </button>

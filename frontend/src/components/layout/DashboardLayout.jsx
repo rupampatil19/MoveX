@@ -27,10 +27,10 @@ const DashboardLayout = ({ user, children, logout }) => {
     return () => {
       isMounted = false;
     };
-  }, [location.pathname, user?.id]); // refetch on route change or user change
+  }, [location.pathname, user?.id]);
 
   return (
-    <div className="min-h-screen bg-[#F7FAF7] text-gray-800 flex flex-col md:flex-row">
+    <div className="glass-page-bg text-gray-800 flex flex-col md:flex-row">
       <Sidebar user={userStats} logout={logout} pro={user?.accountType === 'PRO'} />
       <div className="flex-1 md:ml-64 pb-16 md:pb-0">
         <TopHeader user={userStats} pro={user?.accountType === 'PRO'} />
