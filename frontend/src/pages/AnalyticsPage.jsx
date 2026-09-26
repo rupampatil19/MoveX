@@ -2,19 +2,26 @@ import { useState, useEffect } from 'react';
 import API from '../api';
 import { motion } from 'framer-motion';
 import {
-  Activity, Route, Clock, Flame, RefreshCw, FileDown, Loader2
+  Activity, Route, Clock, Flame, RefreshCw, FileDown, Loader2,
+  TrendingUp, Trophy, Zap
 } from 'lucide-react';
 import {
-  LineChart as RechartsLine, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
+  LineChart as RechartsLine, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 import { jsPDF } from 'jspdf';
+import MoveXCard from '../components/ui/MoveXCard';
+import SectionHeader from '../components/ui/SectionHeader';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import EmptyState from '../components/ui/EmptyState';
+import Button from '../components/ui/Button';
 
 const AnalyticsPage = () => {
   const [activities, setActivities] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // PDF states
   const [period, setPeriod] = useState('today');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -22,32 +29,37 @@ const AnalyticsPage = () => {
   const [genError, setGenError] = useState('');
 
   useEffect(() => {
-    fetchActivities();
+    fetchAll();
   }, []);
 
-  const fetchActivities = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await API.get('/activity/mine');
-      setActivities(res.data);
+      const [actRes, userRes] = await Promise.all([
+        API.get('/activity/mine'),
+        API.get('/auth/me'),
+      ]);
+      setActivities(actRes.data);
+      setCurrentUser(userRes.data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load activities');
+      setError('Failed to load analytics data');
     } finally {
       setLoading(false);
     }
   };
 
   const totalWorkouts = activities.length;
-  const totalDistance = activities.reduce((sum, act) => sum + (Number(act.distance) || 0), 0);
-  const totalDuration = activities.reduce((sum, act) => sum + (Number(act.duration) || 0), 0);
-  const totalEnergy = activities.reduce((sum, act) => sum + (Number(act.energyAwarded) || 0), 0);
+  const totalDistance = activities.reduce((s, a) => s + (Number(a.distance) || 0), 0);
+  const totalDuration = Math.round(activities.reduce((s, a) => s + (Number(a.duration) || 0), 0));
+  const totalEnergy = activities.reduce((s, a) => s + (Number(a.energyAwarded) || 0), 0);
+  const totalXP = activities.reduce((s, a) => s + (Number(a.xpAwarded) || 0), 0);
 
   const last30Days = [...activities]
-    .filter(act => new Date(act.date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+    .filter((act) => new Date(act.date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
-  const distanceOverTime = last30Days.map(act => ({
+  const distanceOverTime = last30Days.map((act) => ({
     date: new Date(act.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     distance: Number(act.distance) || 0,
   }));
@@ -78,8 +90,7 @@ const AnalyticsPage = () => {
         params.endDate = endDate;
       }
       const res = await API.get('/analytics/report', { params });
-      const data = res.data;
-      generatePDF(data);
+      generatePDF(res.data);
     } catch (err) {
       console.error(err);
       setGenError('Unable to generate analysis right now. Please try again.');
@@ -88,10 +99,11 @@ const AnalyticsPage = () => {
     }
   };
 
+  // ---------- PDF drawing helpers (preserved as-is) ----------
   const drawLineChart = (doc, trend, x, y, width, height) => {
     if (!trend || trend.length === 0) return y;
 
-    const maxCount = Math.max(...trend.map(d => d.count), 1);
+    const maxCount = Math.max(...trend.map((d) => d.count), 1);
     const chartStartY = y + 10;
     const chartHeight = height - 20;
     const pointSpacing = width / (trend.length - 1 || 1);
@@ -111,7 +123,7 @@ const AnalyticsPage = () => {
       doc.line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
     }
 
-    points.forEach(p => {
+    points.forEach((p) => {
       doc.setFillColor('#2563EB');
       doc.circle(p.x, p.y, 1.2, 'F');
     });
@@ -130,8 +142,8 @@ const AnalyticsPage = () => {
     if (entries.length === 0) return y;
 
     const maxVal = Math.max(...entries.map(([, v]) => v), 1);
-    const barWidth = width / entries.length * 0.6;
-    const gap = width / entries.length * 0.4;
+    const barWidth = (width / entries.length) * 0.6;
+    const gap = (width / entries.length) * 0.4;
     const chartHeight = height - 20;
 
     doc.setFontSize(8);
@@ -161,7 +173,6 @@ const AnalyticsPage = () => {
     const dark = '#1F2D24';
     const gray = '#6B7C72';
 
-    // Header
     doc.setFillColor(primary);
     doc.rect(0, 0, 210, 25, 'F');
     doc.setTextColor('#FFFFFF');
@@ -182,7 +193,6 @@ const AnalyticsPage = () => {
     doc.text(`Region: ${data.user.region}`, 14, 57);
     doc.text(`Period: ${data.period}`, 14, 63);
 
-    // Summary
     let y = 75;
     doc.setFontSize(12);
     doc.text('Summary', 14, y);
@@ -196,7 +206,6 @@ const AnalyticsPage = () => {
     doc.text(`Trophies Earned: ${data.totalTrophies}`, 14, y); y += 5;
     doc.text(`Current Streak: ${data.currentStreak} days`, 14, y); y += 5;
 
-    // Activity breakdown
     y += 5;
     doc.setFontSize(12);
     doc.text('Activity Breakdown', 14, y);
@@ -207,7 +216,6 @@ const AnalyticsPage = () => {
       y += 5;
     });
 
-    // Daily Activity Trend
     if (data.dailyTrend && data.dailyTrend.length > 0) {
       if (y + 80 > 280) { doc.addPage(); y = 20; }
       doc.setFontSize(12);
@@ -215,7 +223,6 @@ const AnalyticsPage = () => {
       y = drawLineChart(doc, data.dailyTrend, 14, y + 8, 180, 60);
     }
 
-    // Workout Types
     if (Object.keys(data.typeBreakdown).length > 0) {
       if (y + 80 > 280) { doc.addPage(); y = 20; }
       doc.setFontSize(12);
@@ -223,7 +230,6 @@ const AnalyticsPage = () => {
       y = drawBarChart(doc, data.typeBreakdown, 14, y + 8, 180, 60);
     }
 
-    // Insights
     y += 5;
     if (y > 260) { doc.addPage(); y = 20; }
     doc.setFontSize(12);
@@ -236,115 +242,234 @@ const AnalyticsPage = () => {
       y += 6;
     });
 
-    // Footer
     doc.setFontSize(8);
     doc.setTextColor(gray);
     doc.text('Keep Moving. Evolve Together.', 14, 290);
     doc.save(`MoveX_Analysis_${Date.now()}.pdf`);
   };
 
+  // ---------- Loading / Error states ----------
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Analytics</h1>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <MoveXCard key={i} padded={false} className="p-4">
+              <LoadingSkeleton variant="line" count={2} />
+            </MoveXCard>
+          ))}
+        </div>
+        <MoveXCard>
+          <LoadingSkeleton variant="line" count={6} />
+        </MoveXCard>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Analytics</h1>
+        <MoveXCard>
+          <EmptyState
+            icon={Activity}
+            title="Couldn't load analytics"
+            message={error}
+            action={<Button onClick={fetchAll} icon={RefreshCw}>Retry</Button>}
+          />
+        </MoveXCard>
+      </div>
+    );
+  }
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Historical Data Analysis</h1>
-        <button onClick={fetchActivities} className="flex items-center gap-2 bg-[#2563EB] text-white px-4 py-2 rounded-lg hover:bg-[#1D4ED8] transition">
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-sm text-gray-500 mt-1">Your fitness intelligence dashboard</p>
+        </div>
+        <Button variant="secondary" size="sm" icon={RefreshCw} onClick={fetchAll}>
+          Refresh
+        </Button>
       </div>
 
-      {/* Analytics Content */}
-      {loading ? (
-        <p className="text-gray-500">Loading analytics...</p>
-      ) : error ? (
-        <p className="text-red-500">{error}</p>
-      ) : (
-        <>
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-[#2563EB] mb-2"><Activity className="w-5 h-5" /><span className="text-sm text-gray-500">Workouts</span></div>
-              <p className="text-2xl font-bold text-gray-800">{totalWorkouts}</p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-[#2563EB] mb-2"><Route className="w-5 h-5" /><span className="text-sm text-gray-500">Distance (km)</span></div>
-              <p className="text-2xl font-bold text-gray-800">{totalDistance.toFixed(1)}</p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-[#2563EB] mb-2"><Clock className="w-5 h-5" /><span className="text-sm text-gray-500">Duration (min)</span></div>
-              <p className="text-2xl font-bold text-gray-800">{totalDuration}</p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 text-[#2563EB] mb-2"><Flame className="w-5 h-5" /><span className="text-sm text-gray-500">Energy</span></div>
-              <p className="text-2xl font-bold text-gray-800">{totalEnergy}</p>
-            </div>
-          </div>
+      {/* PRIMARY STATS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MoveXCard padded={false} className="p-4">
+          <Activity className="w-5 h-5 text-[#2563EB] mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Workouts</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">{totalWorkouts}</p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <Route className="w-5 h-5 text-[#2563EB] mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Distance</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">
+            {totalDistance.toFixed(1)}<span className="text-xs text-gray-500 ml-0.5">km</span>
+          </p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <Zap className="w-5 h-5 text-yellow-500 mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Energy</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">{totalEnergy}</p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <TrendingUp className="w-5 h-5 text-[#2563EB] mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">XP</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">{totalXP}</p>
+        </MoveXCard>
+      </div>
 
-          {/* Distance Trend Chart */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">Distance Trend (Last 30 Days)</h2>
-            {distanceOverTime.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <RechartsLine data={distanceOverTime}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E3ECE4" />
-                  <XAxis dataKey="date" stroke="#6B7C72" />
-                  <YAxis stroke="#6B7C72" />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #E3ECE4' }} />
-                  <Line type="monotone" dataKey="distance" stroke="#2563EB" strokeWidth={2} />
-                </RechartsLine>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-gray-500">No distance data in the last 30 days.</p>
-            )}
-          </div>
+      {/* SECONDARY STATS */}
+      <div className="grid grid-cols-3 gap-3">
+        <MoveXCard padded={false} className="p-4">
+          <Clock className="w-4 h-4 text-[#2563EB] mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Duration</p>
+          <p className="text-base font-bold text-gray-900 mt-0.5">
+            {Math.round(totalDuration)}<span className="text-xs text-gray-500 ml-0.5">min</span>
+          </p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <Flame className="w-4 h-4 text-orange-500 mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Streak</p>
+          <p className="text-base font-bold text-gray-900 mt-0.5">
+            {currentUser?.streak || 0}<span className="text-xs text-gray-500 ml-0.5">d</span>
+          </p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <Trophy className="w-4 h-4 text-[#2563EB] mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Trophies</p>
+          <p className="text-base font-bold text-gray-900 mt-0.5">
+            {currentUser?.trophyPoints ?? currentUser?.trophies?.length ?? 0}
+          </p>
+        </MoveXCard>
+      </div>
 
-          {/* Workout Types Chart */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">Workout Types</h2>
-            {typeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={typeData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E3ECE4" />
-                  <XAxis dataKey="name" stroke="#6B7C72" />
-                  <YAxis stroke="#6B7C72" />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #E3ECE4' }} />
-                  <Bar dataKey="value" fill="#2563EB" radius={[4,4,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-gray-500">No workout types recorded yet.</p>
-            )}
-          </div>
+      {/* DISTANCE TREND */}
+      <div>
+        <SectionHeader title="Distance Trend" subtitle="Last 30 days" icon={TrendingUp} />
+        <MoveXCard>
+          {distanceOverTime.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <RechartsLine data={distanceOverTime}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="date" stroke="#9CA3AF" fontSize={11} />
+                <YAxis stroke="#9CA3AF" fontSize={11} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="distance"
+                  stroke="#2563EB"
+                  strokeWidth={2}
+                  dot={{ fill: '#2563EB', r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              </RechartsLine>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState
+              icon={TrendingUp}
+              title="No distance data yet"
+              message="Log a few activities to see your trend over time."
+            />
+          )}
+        </MoveXCard>
+      </div>
 
-          {/* Recent Activities */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">Recent Activities</h2>
-            <ul className="space-y-2">
-              {activities.slice(0,5).map(act => (
-                <li key={act._id} className="flex justify-between text-sm text-gray-700">
-                  <span className="capitalize">{act.type}</span>
-                  <span>{act.distance} km</span>
-                  <span>{act.duration} min</span>
-                  <span className="text-[#2563EB]">+{act.energyAwarded || 0} Energy</span>
+      {/* WORKOUT TYPES */}
+      <div>
+        <SectionHeader title="Workout Types" icon={Activity} />
+        <MoveXCard>
+          {typeData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={typeData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} />
+                <YAxis stroke="#9CA3AF" fontSize={11} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                />
+                <Bar dataKey="value" fill="#2563EB" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState
+              icon={Activity}
+              title="No workouts logged yet"
+              message="Your activity breakdown will appear here once you get moving."
+            />
+          )}
+        </MoveXCard>
+      </div>
+
+      {/* RECENT ACTIVITIES */}
+      <div>
+        <SectionHeader title="Recent Activities" icon={Activity} actionTo="/activity" actionLabel="View all" />
+        <MoveXCard>
+          {activities.length === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="No activities yet"
+              message="Start moving and your activities will show here."
+            />
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {activities.slice(0, 5).map((act) => (
+                <li key={act._id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#2563EB]/10 flex items-center justify-center shrink-0">
+                      <Activity className="w-4 h-4 text-[#2563EB]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 capitalize truncate">{act.type}</p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {act.distance ? `${act.distance} km` : '—'}
+                        {act.duration ? ` · ${act.duration} min` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-yellow-600 shrink-0 ml-2">
+                    +{act.energyAwarded || 0} E
+                  </span>
                 </li>
               ))}
-              {activities.length === 0 && <li className="text-gray-500">No activities yet.</li>}
             </ul>
-          </div>
-        </>
-      )}
+          )}
+        </MoveXCard>
+      </div>
 
-      {/* PDF Generation Card moved to bottom */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <FileDown className="w-5 h-5 text-[#2563EB]" /> Generate Analysis PDF
-        </h2>
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {['today', 'month', 'custom'].map(p => (
+      {/* PDF GENERATION */}
+      <div>
+        <SectionHeader title="Generate Analysis PDF" icon={FileDown} />
+        <MoveXCard>
+          <p className="text-sm text-gray-500 mb-4">
+            Export a shareable PDF report of your activities, trends, and MoveX insights.
+          </p>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {['today', 'month', 'custom'].map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-4 py-2 rounded-full transition ${period === p ? 'bg-[#2563EB] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  period === p
+                    ? 'bg-[#2563EB] text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
                 {p === 'today' ? 'Today' : p === 'month' ? 'This Month' : 'Custom Range'}
               </button>
@@ -352,29 +477,41 @@ const AnalyticsPage = () => {
           </div>
 
           {period === 'custom' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Start Date</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-2 border rounded-lg" />
+                <label className="block text-xs font-medium text-gray-600 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB]/50"
+                />
               </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-1">End Date</label>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-2 border rounded-lg" />
+                <label className="block text-xs font-medium text-gray-600 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB]/50"
+                />
               </div>
             </div>
           )}
 
-          {genError && <p className="text-red-500 text-sm">{genError}</p>}
+          {genError && (
+            <p className="text-red-500 text-sm mb-3">{genError}</p>
+          )}
 
-          <button
+          <Button
+            variant="primary"
+            icon={FileDown}
+            loading={generating}
             onClick={handleGeneratePDF}
-            disabled={generating}
-            className="bg-[#2563EB] text-white px-6 py-2 rounded-lg hover:bg-[#1D4ED8] transition flex items-center gap-2"
           >
-            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
             {generating ? 'Preparing your MoveX Analysis...' : 'Generate PDF'}
-          </button>
-        </div>
+          </Button>
+        </MoveXCard>
       </div>
     </motion.div>
   );

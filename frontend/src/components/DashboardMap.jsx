@@ -276,7 +276,7 @@ const DashboardMap = ({ userRegion }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden w-full lg:max-w-[300px] lg:mx-auto">
+    <div className="bg-white rounded-2xl border border-gray-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden w-full lg:max-w-[300px] lg:mx-auto">
       <div className="p-3 border-b border-gray-100 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold text-gray-800 truncate">{header.title}</h2>
@@ -306,10 +306,10 @@ const DashboardMap = ({ userRegion }) => {
             />
           )}
           {showState && <MaharashtraLayer onCityClick={(cityName) => { const found = Object.values(CITIES).find((c) => c.name === cityName); if (found) handleCityClick(found.id); }} />}
-          {showState && <CityStationsLayer cities={citiesInActiveState} cityEnergies={cityEnergies} onCityClick={handleCityClick} size={30} showLabels={true} />}
+          {showState && <CityStationsLayer cities={citiesInActiveState} cityEnergies={cityEnergies} onCityClick={handleCityClick} size={36} showLabels={true} />}
           {showIndia && <StateHubsLayer states={STATES} stateEnergies={stateEnergies} size={32} onStateClick={handleStateHubClick} />}
           {showState && STATES[stateId] && (
-            <StateHubsLayer states={{ [stateId]: STATES[stateId] }} stateEnergies={stateEnergies} size={56} onStateClick={handleStateHubClick} />
+            <StateHubsLayer states={{ [stateId]: STATES[stateId] }} stateEnergies={stateEnergies} size={64} onStateClick={handleStateHubClick} />
           )}
           {showCityHub && (
             <CityCollectiveHub city={city} totalEnergy={cityTotalEnergy} size={56} onClick={(data) => { setSelectedRegion(null); setSelectedCity(data); }} />

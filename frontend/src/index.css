@@ -29,7 +29,6 @@ html, body {
   opacity: 1 !important;
 }
 
-/* Remove any accidental dark overlay */
 .map-overlay,
 .map-dark-overlay,
 .map-shade,
@@ -37,7 +36,6 @@ html, body {
   display: none !important;
 }
 
-/* Rewards carousel - hide horizontal scrollbar on mobile */
 .reward-carousel {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -47,7 +45,7 @@ html, body {
 }
 
 /* ============================================================
-   MOVEX GLASSMORPHISM SYSTEM
+   MOVEX GLASS SYSTEM (kept for floating navigation only)
    ============================================================ */
 
 .glass-page-bg {
@@ -58,16 +56,6 @@ html, body {
     radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.06) 0px, transparent 55%),
     linear-gradient(160deg, #f5f8ff 0%, #eaf1ff 50%, #f5f8ff 100%);
   background-attachment: fixed;
-}
-
-.glass {
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow:
-    0 8px 32px rgba(31, 38, 135, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .glass-strong {
@@ -88,29 +76,24 @@ html, body {
   box-shadow: 0 4px 16px rgba(31, 38, 135, 0.05);
 }
 
-.glass-nav {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
-.glass-input {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  transition: all 0.2s ease;
-}
-.glass-input:focus {
-  background: rgba(255, 255, 255, 0.75);
-  border-color: rgba(37, 99, 235, 0.5);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-  outline: none;
-}
-
 @supports not (backdrop-filter: blur(10px)) {
-  .glass, .glass-strong, .glass-subtle, .glass-nav {
-    background: rgba(255, 255, 255, 0.9);
+  .glass-strong, .glass-subtle {
+    background: rgba(255, 255, 255, 0.95);
   }
+}
+
+/* ============================================================
+   MOVEX CLEAN SURFACE UTILITIES (used by MoveXCard)
+   ============================================================ */
+
+.movex-surface {
+  background: #ffffff;
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.movex-surface-hero {
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
 }

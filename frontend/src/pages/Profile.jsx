@@ -3,41 +3,38 @@ import { Link } from 'react-router-dom';
 import API from '../api';
 import { motion } from 'framer-motion';
 import {
-  User, Mail, MapPin, Zap, Trophy, Flame, Activity,
-  Route, Clock, Pencil, TrendingUp,
-  Medal, Award, Star, Calendar, LogOut
+  Mail, MapPin, Zap, Trophy, Flame, Activity,
+  Route, Clock, Pencil, TrendingUp, Medal, Star, LogOut, ArrowRight
 } from 'lucide-react';
-import Logo from '../components/Logo';
+import MoveXCard from '../components/ui/MoveXCard';
+import SectionHeader from '../components/ui/SectionHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import Button from '../components/ui/Button';
+import { useTrophy } from '../context/TrophyContext';
 
 const Profile = ({ user, logout }) => {
   const [currentUser, setCurrentUser] = useState(user);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { balance: trophyBalance, loading: trophyLoading } = useTrophy();
 
   useEffect(() => {
-    fetchUser();
-    fetchActivities();
+    (async () => {
+      try {
+        const [userRes, actRes] = await Promise.all([
+          API.get('/auth/me'),
+          API.get('/activity/mine'),
+        ]);
+        setCurrentUser(userRes.data);
+        setActivities(actRes.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
-
-  const fetchUser = async () => {
-    try {
-      const res = await API.get('/auth/me');
-      setCurrentUser(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchActivities = async () => {
-    try {
-      const res = await API.get('/activity/mine');
-      setActivities(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     if (window.confirm('Logout?\n\nAre you sure you want to logout from this account?')) {
@@ -45,7 +42,11 @@ const Profile = ({ user, logout }) => {
     }
   };
 
-  // Calculate totals from actual activities
+  // Trophy: prefer TrophyContext, fall back to /auth/me value
+  const displayTrophies = trophyLoading
+    ? (currentUser?.trophyPoints ?? 0)
+    : (trophyBalance ?? currentUser?.trophyPoints ?? 0);
+
   const totalWorkouts = activities.length;
   const totalDistance = activities.reduce((sum, act) => sum + (Number(act.distance) || 0), 0);
   const totalDuration = activities.reduce((sum, act) => sum + (Number(act.duration) || 0), 0);
@@ -57,16 +58,18 @@ const Profile = ({ user, logout }) => {
   const xp = currentUser?.xp || 0;
   const level = currentUser?.level || 1;
   const xpForNextLevel = 1000;
-  const xpProgress = Math.min((xp / xpForNextLevel) * 100, 100);
+  const xpIntoLevel = xp % xpForNextLevel;
+  const xpProgress = Math.min((xpIntoLevel / xpForNextLevel) * 100, 100);
+  const xpRemaining = xpForNextLevel - xpIntoLevel;
 
   const recentActivities = activities.slice(0, 5);
 
   const achievements = [
-    { icon: Medal, title: 'First Workout', description: 'Complete your first activity', earned: totalWorkouts >= 1, color: 'text-[#2563EB]' },
-    { icon: Flame, title: '7 Day Streak', description: 'Maintain a 7-day activity streak', earned: currentUser?.streak >= 7, color: 'text-orange-500' },
-    { icon: Zap, title: 'Energy Booster', description: 'Earn 500+ energy', earned: currentUser?.energy >= 500, color: 'text-yellow-500' },
-    { icon: Route, title: '10 KM Runner', description: 'Run 10 km in total', earned: totalDistance >= 10, color: 'text-blue-500' },
-    { icon: Trophy, title: 'Consistency Champion', description: 'Complete 5 workouts', earned: totalWorkouts >= 5, color: 'text-purple-500' },
+    { icon: Medal, title: 'First Workout', description: 'Complete your first activity', earned: totalWorkouts >= 1 },
+    { icon: Flame, title: '7 Day Streak', description: 'Maintain a 7-day activity streak', earned: (currentUser?.streak || 0) >= 7 },
+    { icon: Zap, title: 'Energy Booster', description: 'Earn 500+ energy', earned: (currentUser?.energy || 0) >= 500 },
+    { icon: Route, title: '10 KM Runner', description: 'Run 10 km in total', earned: totalDistance >= 10 },
+    { icon: Trophy, title: 'Consistency Champion', description: 'Complete 5 workouts', earned: totalWorkouts >= 5 },
   ];
 
   const formatDuration = (min) => {
@@ -81,146 +84,196 @@ const Profile = ({ user, logout }) => {
     const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24));
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
-    return `${diffDays} days ago`;
+    return `${diffDays}d ago`;
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      {/* Logo always light on light background */}
-      <Logo light={true} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-5">
 
-      {/* Profile Header Card - WHITE for all users */}
-      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <div className="w-24 h-24 rounded-full bg-[#2563EB] flex items-center justify-center text-4xl font-bold text-white">
+      {/* PROFILE HEADER */}
+      <MoveXCard hero>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-[#2563EB]/30 shrink-0">
             {currentUser?.name?.charAt(0).toUpperCase() || '?'}
           </div>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-800">{currentUser?.name}</h1>
-            <div className="flex flex-wrap gap-4 mt-2 text-gray-500">
-              <span className="flex items-center gap-1"><Mail className="w-4 h-4" /> {currentUser?.email}</span>
-              <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {currentUser?.region || 'Not provided'}</span>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-[#2563EB] font-semibold">Level {level}</span>
-              <span className="text-gray-400">•</span>
-              <span className="text-gray-600">{xp} XP</span>
-            </div>
-            <div className="mt-3 max-w-md">
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-[#2563EB] h-2 rounded-full" style={{ width: `${xpProgress}%` }} />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {xp} / {xpForNextLevel} XP • {xpForNextLevel - xp} XP to Level {level + 1}
-              </p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 truncate">{currentUser?.name || 'Athlete'}</h1>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-sm text-gray-500">
+              {currentUser?.email && (
+                <span className="inline-flex items-center gap-1.5 truncate">
+                  <Mail className="w-3.5 h-3.5 shrink-0" /> {currentUser.email}
+                </span>
+              )}
+              {currentUser?.region && (
+                <span className="inline-flex items-center gap-1.5 truncate">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" /> {currentUser.region}
+                </span>
+              )}
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <Link to="/settings" className="flex items-center gap-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white px-4 py-2 rounded-lg transition">
-              <Pencil className="w-4 h-4" /> Edit Profile
+          <div className="flex sm:flex-col gap-2 shrink-0">
+            <Link to="/settings" className="flex-1 sm:flex-none">
+              <Button variant="primary" size="sm" icon={Pencil} fullWidth>
+                Edit
+              </Button>
             </Link>
-            <Link to="/analytics" className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition">
-              <TrendingUp className="w-4 h-4" /> View Analytics
-            </Link>
-            <button onClick={handleLogout} className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-500 px-4 py-2 rounded-lg transition">
-              <LogOut className="w-4 h-4" /> Logout
-            </button>
+            <Button variant="secondary" size="sm" icon={LogOut} onClick={handleLogout}>
+              Logout
+            </Button>
           </div>
+        </div>
+      </MoveXCard>
+
+      {/* YOUR PROGRESS */}
+      <MoveXCard>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Level</p>
+            <p className="text-2xl font-bold text-gray-900">{level}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Total XP</p>
+            <p className="text-lg font-bold text-gray-900 tabular-nums">{xp.toLocaleString()}</p>
+          </div>
+        </div>
+        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mb-2">
+          <div
+            className="h-2 rounded-full bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] transition-all"
+            style={{ width: `${xpProgress}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>{xpIntoLevel} / {xpForNextLevel} XP</span>
+          <span className="font-medium text-[#2563EB]">{xpRemaining} XP to Level {level + 1}</span>
+        </div>
+      </MoveXCard>
+
+      {/* CORE STATS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MoveXCard padded={false} className="p-4">
+          <Zap className="w-5 h-5 text-yellow-500 mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Energy</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">{currentUser?.energy || 0}</p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <Trophy className="w-5 h-5 text-[#2563EB] mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Trophies</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">{displayTrophies}</p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <Flame className="w-5 h-5 text-orange-500 mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Streak</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">
+            {currentUser?.streak || 0}<span className="text-xs text-gray-500 ml-0.5">d</span>
+          </p>
+        </MoveXCard>
+        <MoveXCard padded={false} className="p-4">
+          <Activity className="w-5 h-5 text-[#2563EB] mb-2" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Activities</p>
+          <p className="text-xl font-bold text-gray-900 mt-0.5">{totalWorkouts}</p>
+        </MoveXCard>
+      </div>
+
+      {/* ACTIVITY SUMMARY */}
+      <div>
+        <SectionHeader title="Activity Summary" icon={TrendingUp} actionTo="/analytics" actionLabel="Analytics" />
+        <div className="grid grid-cols-3 gap-3">
+          <MoveXCard padded={false} className="p-4">
+            <Route className="w-4 h-4 text-[#2563EB] mb-2" />
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Distance</p>
+            <p className="text-lg font-bold text-gray-900 mt-0.5">
+              {totalDistance.toFixed(1)}<span className="text-xs text-gray-500 ml-0.5">km</span>
+            </p>
+          </MoveXCard>
+          <MoveXCard padded={false} className="p-4">
+            <Clock className="w-4 h-4 text-[#2563EB] mb-2" />
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Duration</p>
+            <p className="text-lg font-bold text-gray-900 mt-0.5">{formatDuration(totalDuration)}</p>
+          </MoveXCard>
+          <MoveXCard padded={false} className="p-4">
+            <Flame className="w-4 h-4 text-orange-500 mb-2" />
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Calories</p>
+            <p className="text-lg font-bold text-gray-900 mt-0.5">
+              {totalCalories.toFixed(0)}<span className="text-xs text-gray-500 ml-0.5">kcal</span>
+            </p>
+          </MoveXCard>
         </div>
       </div>
 
-      {/* Key Stats - all white cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 text-yellow-500 mb-2">
-            <Zap className="w-5 h-5" />
-            <span className="text-sm text-gray-500">Energy</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{currentUser?.energy || 0}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 text-purple-500 mb-2">
-            <Trophy className="w-5 h-5" />
-            <span className="text-sm text-gray-500">Trophies</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{currentUser?.trophies?.length || 0}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 text-orange-500 mb-2">
-            <Flame className="w-5 h-5" />
-            <span className="text-sm text-gray-500">Streak</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{currentUser?.streak || 0} Days</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 text-[#2563EB] mb-2">
-            <Activity className="w-5 h-5" />
-            <span className="text-sm text-gray-500">Activities</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{totalWorkouts}</p>
-        </div>
-      </div>
-
-      {/* Activity Summary - white cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 text-[#2563EB] mb-2">
-            <Route className="w-5 h-5" />
-            <span className="text-sm text-gray-500">Total Distance</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{totalDistance.toFixed(1)} km</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 text-[#2563EB] mb-2">
-            <Clock className="w-5 h-5" />
-            <span className="text-sm text-gray-500">Total Duration</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{formatDuration(totalDuration)}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 text-red-400 mb-2">
-            <Flame className="w-5 h-5" />
-            <span className="text-sm text-gray-500">Calories Burned</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{totalCalories.toFixed(0)} kcal</p>
-        </div>
-      </div>
-
-      {/* Achievements + Recent Activity - white cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Achievements</h2>
-          <ul className="space-y-3">
-            {achievements.map((ach, idx) => {
-              const Icon = ach.icon;
-              return (
-                <li key={idx} className={`flex items-center gap-3 p-3 rounded-lg ${ach.earned ? 'bg-blue-50' : 'bg-gray-50 opacity-60'}`}>
-                  <Icon className={`w-6 h-6 ${ach.color}`} />
-                  <div>
-                    <p className="text-gray-800 font-semibold">{ach.title}</p>
-                    <p className="text-sm text-gray-500">{ach.description}</p>
-                  </div>
-                  {ach.earned && <Star className="w-5 h-5 text-yellow-500 ml-auto" />}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Activity</h2>
-          {loading ? <p className="text-gray-500">Loading...</p> : recentActivities.length === 0 ? <p className="text-gray-500">No activities yet.</p> : (
+      {/* ACHIEVEMENTS + RECENT ACTIVITY */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          <SectionHeader title="Achievements" icon={Medal} />
+          <MoveXCard padded={false} className="p-4">
             <ul className="space-y-2">
-              {recentActivities.map((act) => (
-                <li key={act._id} className="flex items-center justify-between border-b border-gray-100 py-2">
-                  <div>
-                    <p className="text-gray-800 capitalize">{act.type}</p>
-                    <p className="text-sm text-gray-500">{act.distance} km • {act.duration} min</p>
-                  </div>
-                  <span className="text-xs text-gray-400">{formatDate(act.date)}</span>
-                </li>
-              ))}
+              {achievements.map((ach, idx) => {
+                const Icon = ach.icon;
+                return (
+                  <li
+                    key={idx}
+                    className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                      ach.earned ? 'bg-[#2563EB]/5' : 'bg-gray-50 opacity-60'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      ach.earned ? 'bg-[#2563EB]/10' : 'bg-gray-200/60'
+                    }`}>
+                      <Icon className={`w-5 h-5 ${ach.earned ? 'text-[#2563EB]' : 'text-gray-400'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold truncate ${ach.earned ? 'text-gray-900' : 'text-gray-500'}`}>
+                        {ach.title}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{ach.description}</p>
+                    </div>
+                    {ach.earned && <Star className="w-4 h-4 text-yellow-500 shrink-0" />}
+                  </li>
+                );
+              })}
             </ul>
-          )}
+          </MoveXCard>
+        </div>
+
+        <div>
+          <SectionHeader title="Recent Activity" icon={Activity} actionTo="/activity" actionLabel="View all" />
+          <MoveXCard>
+            {loading ? (
+              <LoadingSkeleton variant="line" count={4} />
+            ) : recentActivities.length === 0 ? (
+              <EmptyState
+                icon={Activity}
+                title="Your MoveX story starts here"
+                message="Log your first activity to see it here."
+                action={
+                  <Link to="/start">
+                    <Button variant="primary" size="sm" icon={ArrowRight}>
+                      Start Activity
+                    </Button>
+                  </Link>
+                }
+              />
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {recentActivities.map((act) => (
+                  <li key={act._id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#2563EB]/10 flex items-center justify-center shrink-0">
+                        <Activity className="w-4 h-4 text-[#2563EB]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 capitalize truncate">{act.type}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {act.distance ? `${act.distance} km` : '—'}
+                          {act.duration ? ` · ${act.duration} min` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-400 shrink-0 ml-2">{formatDate(act.date || act.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </MoveXCard>
         </div>
       </div>
     </motion.div>
