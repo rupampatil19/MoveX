@@ -26,7 +26,7 @@ const BottomNavigation = ({ user, logout }) => {
     { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
     { to: '/rewards', icon: Award, label: 'Rewards' },
     { to: '/ai-coach', icon: Bot, label: 'AI Coach' },
-    { to: '/ar', icon: Camera, label: 'AR' },   // AR added
+    { to: '/ar', icon: Camera, label: 'AR' },
     { to: '/events', icon: CalendarDays, label: 'Events' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];
@@ -48,17 +48,18 @@ const BottomNavigation = ({ user, logout }) => {
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 flex justify-around items-center px-2 py-2">
+      {/* Floating pill nav */}
+      <nav className="md:hidden fixed bottom-3 left-3 right-3 glass-strong rounded-2xl border border-white/50 z-40 flex justify-around items-center px-2 py-2 shadow-2xl shadow-[#2563EB]/15">
         {primaryItems.map((item) => {
           const isActive = location.pathname === item.to;
           const Icon = item.icon;
           if (item.center) {
             return (
               <Link key={item.to} to={item.to} className="flex flex-col items-center -mt-6">
-                <div className="w-14 h-14 rounded-full bg-[#2563EB] flex items-center justify-center shadow-lg">
-                  <Icon className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center shadow-lg shadow-[#2563EB]/40 border-4 border-white/70">
+                  <Icon className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xs text-gray-700 mt-1">{item.label}</span>
+                <span className="text-[10px] text-gray-700 mt-0.5 font-medium">{item.label}</span>
               </Link>
             );
           }
@@ -66,36 +67,39 @@ const BottomNavigation = ({ user, logout }) => {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex flex-col items-center px-3 py-1 rounded-lg ${
+              className={`flex flex-col items-center px-2 py-1 rounded-xl transition-colors ${
                 isActive ? 'text-[#2563EB]' : 'text-gray-500'
               }`}
             >
-              <Icon className="w-6 h-6" />
-              <span className="text-xs mt-1">{item.label}</span>
+              <Icon className="w-5 h-5" />
+              <span className="text-[10px] mt-0.5">{item.label}</span>
             </Link>
           );
         })}
         <button
           onClick={() => setIsMoreOpen(true)}
-          className={`flex flex-col items-center px-3 py-1 rounded-lg ${
+          className={`flex flex-col items-center px-2 py-1 rounded-xl transition-colors ${
             isMoreOpen ? 'text-[#2563EB]' : 'text-gray-500'
           }`}
         >
-          <Menu className="w-6 h-6" />
-          <span className="text-xs mt-1">More</span>
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] mt-0.5">More</span>
         </button>
       </nav>
 
       {isMoreOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-[90] md:hidden"
+            className="fixed inset-0 bg-black/40 backdrop-blur-md z-[90] md:hidden"
             onClick={() => setIsMoreOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 rounded-t-2xl z-[100] md:hidden max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="fixed bottom-3 left-3 right-3 glass-strong rounded-3xl border border-white/50 z-[100] md:hidden max-h-[80vh] flex flex-col shadow-2xl shadow-[#2563EB]/15">
+            <div className="flex items-center justify-between p-4 border-b border-white/50">
               <h2 className="text-lg font-semibold text-gray-800">More</h2>
-              <button onClick={() => setIsMoreOpen(false)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+              <button
+                onClick={() => setIsMoreOpen(false)}
+                className="p-2 rounded-full hover:bg-white/60 text-gray-500 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -107,7 +111,7 @@ const BottomNavigation = ({ user, logout }) => {
                     key={item.to}
                     to={item.to}
                     onClick={() => setIsMoreOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 text-gray-700 transition-colors"
                   >
                     <Icon className="w-5 h-5 text-[#2563EB]" />
                     <span className="text-sm">{item.label}</span>
@@ -116,16 +120,16 @@ const BottomNavigation = ({ user, logout }) => {
               })}
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-50 text-red-500"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-50/70 text-red-500 transition-colors"
               >
                 <LogOut className="w-5 h-5" />
                 <span className="text-sm">Logout</span>
               </button>
             </div>
-            <div className="p-3 border-t border-gray-100">
+            <div className="p-3 border-t border-white/50">
               <button
                 onClick={() => setIsMoreOpen(false)}
-                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm"
+                className="w-full py-3 glass-subtle hover:bg-white/70 text-gray-700 rounded-xl text-sm transition-colors"
               >
                 Close
               </button>

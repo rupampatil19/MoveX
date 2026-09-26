@@ -37,7 +37,7 @@ const Sidebar = ({ user, logout }) => {
     { to: '/rewards', icon: Award, label: 'Rewards' },
     { to: '/athlete', icon: Medal, label: 'Athlete' },
     { to: '/ai-coach', icon: Bot, label: 'AI Coach' },
-    { to: '/analytics', icon: BarChart3, label: 'Analytics' }, // Analytics added
+    { to: '/analytics', icon: BarChart3, label: 'Analytics' },
     { to: '/store', icon: Store, label: 'Store' },
     { to: '/events', icon: CalendarDays, label: 'Events' },
     { to: '/profile', icon: User, label: 'Profile' },
@@ -56,16 +56,16 @@ const Sidebar = ({ user, logout }) => {
     <motion.aside
       initial={{ x: -300 }}
       animate={{ x: 0 }}
-      className="hidden md:flex fixed left-0 top-0 h-screen w-64 bg-white text-gray-800 flex-col z-50 border-r border-gray-200"
+      className="hidden md:flex fixed left-3 top-1 bottom-3 w-64 glass-strong rounded-3xl text-gray-800 flex-col z-50 shadow-2xl shadow-[#2563EB]/10 overflow-hidden"
     >
-      <div className="p-5 border-b border-gray-100">
+      <div className="p-5 border-b border-white/50">
         <Logo light={true} />
         <p className="text-xs mt-1 text-gray-500">
           {isPro ? 'Pro Athlete' : 'Beginner'}
         </p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.to;
           const Icon = item.icon;
@@ -73,10 +73,10 @@ const Sidebar = ({ user, logout }) => {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${
                 isActive
-                  ? 'bg-[#2563EB] text-white font-medium'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white font-medium shadow-lg shadow-[#2563EB]/30'
+                  : 'text-gray-600 hover:bg-white/60 hover:text-gray-900'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} />
@@ -86,9 +86,12 @@ const Sidebar = ({ user, logout }) => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-100 space-y-3">
-        <Link to="/profile" className="flex items-center gap-3 p-2 rounded-lg transition hover:bg-gray-50">
-          <div className="w-10 h-10 rounded-full bg-[#2563EB] flex items-center justify-center font-bold text-white">
+      <div className="p-4 border-t border-white/50 space-y-3">
+        <Link
+          to="/profile"
+          className="flex items-center gap-3 p-2 rounded-xl transition hover:bg-white/60"
+        >
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center font-bold text-white shadow-md shadow-[#2563EB]/40">
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -96,16 +99,16 @@ const Sidebar = ({ user, logout }) => {
             <p className="text-xs text-gray-500">Level {user.level || 1}</p>
           </div>
         </Link>
-        <div className="w-full bg-gray-100 rounded-full h-2">
+        <div className="w-full bg-white/50 rounded-full h-2">
           <div
-            className="h-2 rounded-full bg-[#2563EB]"
+            className="h-2 rounded-full bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] shadow-sm"
             style={{ width: `${Math.min(((user.xp || 0) / 1000) * 100, 100)}%` }}
           />
         </div>
         <p className="text-xs text-gray-500">{user.xp || 0} XP</p>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-red-500 hover:bg-red-50/70 hover:text-red-600 transition"
         >
           <LogOut className="w-5 h-5" />
           <span>Logout</span>

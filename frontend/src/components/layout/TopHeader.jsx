@@ -8,12 +8,12 @@ const TopHeader = ({ user, pro }) => {
   const { balance, loading: trophyLoading } = useTrophy();
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
+    <header className="sticky top-1 z-40 mx-3 md:mx-3 glass-strong rounded-2xl px-4 py-3 md:px-6 md:py-4 shadow-lg shadow-[#2563EB]/5">
       {/* Mobile compact header */}
       <div className="flex md:hidden items-center justify-between">
         <div className="flex items-center gap-2">
           <Logo pro={pro} size="sm" light={true} />
-          <span className="text-xs px-2 py-1 rounded-full bg-[#2563EB] text-white">
+          <span className="text-xs px-2 py-1 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-[#2563EB]/30">
             {flowLabel}
           </span>
         </div>
@@ -33,21 +33,23 @@ const TopHeader = ({ user, pro }) => {
             Your performance. Your progress. Your potential.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-[#2563EB]">
-            <Zap className="w-5 h-5" />
-            <span className="font-semibold text-gray-700">{user.energy || 0}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-[#2563EB] glass-subtle rounded-full px-3 py-1.5 border border-white/60">
+            <Zap className="w-4 h-4" />
+            <span className="font-semibold text-gray-700 text-sm">{user.energy || 0}</span>
           </div>
-          <div className="flex items-center gap-2 text-[#2563EB]">
-            <Trophy className="w-5 h-5" />
-            <span className="font-semibold text-gray-700">{trophyLoading ? '…' : (balance ?? 0)}</span>
+          <div className="flex items-center gap-2 text-[#2563EB] glass-subtle rounded-full px-3 py-1.5 border border-white/60">
+            <Trophy className="w-4 h-4" />
+            <span className="font-semibold text-gray-700 text-sm">
+              {trophyLoading ? '…' : (balance ?? 0)}
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-[#2563EB]">
-            <Flame className="w-5 h-5" />
-            <span className="font-semibold text-gray-700">{user.streak || 0} Day</span>
+          <div className="flex items-center gap-2 text-[#2563EB] glass-subtle rounded-full px-3 py-1.5 border border-white/60">
+            <Flame className="w-4 h-4" />
+            <span className="font-semibold text-gray-700 text-sm">{user.streak || 0} Day</span>
           </div>
           <NotificationBell />
-          <div className="flex items-center gap-2 cursor-pointer px-3 py-1 rounded-lg hover:bg-gray-100 text-gray-700">
+          <div className="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl hover:bg-white/60 text-gray-700 transition-colors">
             <span className="text-sm">{user.region || 'Maharashtra'}</span>
             <ChevronDown className="w-4 h-4 text-gray-500" />
           </div>

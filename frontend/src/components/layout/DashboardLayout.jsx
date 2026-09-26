@@ -32,9 +32,9 @@ const DashboardLayout = ({ user, children, logout }) => {
   return (
     <div className="glass-page-bg text-gray-800 flex flex-col md:flex-row">
       <Sidebar user={userStats} logout={logout} pro={user?.accountType === 'PRO'} />
-      <div className="flex-1 md:ml-64 pb-16 md:pb-0">
+      <div className="flex-1 md:ml-[17.5rem] pb-28 md:pb-4">
         <TopHeader user={userStats} pro={user?.accountType === 'PRO'} />
-        <main className="p-4 md:p-6">
+        <main className="p-3 md:p-4">
           {children}
         </main>
       </div>
