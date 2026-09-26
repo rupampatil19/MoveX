@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import { motion } from 'framer-motion';
-import { Trophy, Loader2, MapPin } from 'lucide-react';
+import {
+  Trophy, MapPin, Users, Globe2, TrendingUp, XCircle, Zap
+} from 'lucide-react';
 import {
   getCityForRegion,
   getCityById,
@@ -10,6 +12,8 @@ import {
   getRegionsForCity,
   getCitiesForState,
 } from '../data/geoHierarchy';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import EmptyState from '../components/ui/EmptyState';
 
 function useGeoContext(user, searchParams) {
   return useMemo(() => {
@@ -75,7 +79,7 @@ function useTitleAndBreadcrumb(context, tab) {
       if (level === 'region' || level === 'city') {
         return {
           title: `${city?.name || 'City'} Regions Ranking`,
-          breadcrumb: [city?.name, state?.name].filter(Boolean).join(' • '),
+          breadcrumb: [city?.name, state?.name].filter(Boolean).join(' · '),
         };
       }
       if (level === 'state') {
@@ -89,7 +93,7 @@ function useTitleAndBreadcrumb(context, tab) {
     if (level === 'region') {
       return {
         title: `${regionId} Leaderboard`,
-        breadcrumb: [city?.name, state?.name].filter(Boolean).join(' • '),
+        breadcrumb: [city?.name, state?.name].filter(Boolean).join(' · '),
       };
     }
     if (level === 'city') {
@@ -176,6 +180,7 @@ const Leaderboard = ({ user }) => {
 
   const scopeSelector = useMemo(() => {
     if (tab !== 'athletes') return null;
+    if (context.level === 'global') return null;
 
     if (context.level === 'region' && context.cityId) {
       const regions = getRegionsForCity(context.cityId);
@@ -227,81 +232,59 @@ const Leaderboard = ({ user }) => {
     return null;
   }, [context, tab, setSearchParams]);
 
-  if (loading && athletes.length === 0 && globalLeaders.length === 0 && regionsRanked.length === 0) {
-    return (
-      <div className="p-6 text-gray-700 flex items-center gap-2">
-        <Loader2 className="w-6 h-6 text-blue-500 animate-spin" /> Loading…
-      </div>
-    );
-  }
-
   const showRegionColumn = context.level !== 'region';
+  const tabs = [
+    context.level !== 'global' && { k: 'athletes', label: 'Top Athletes' },
+    context.level !== 'global' && { k: 'regions', label: 'Regions' },
+    { k: 'global', label: 'Global' },
+  ].filter(Boolean);
+
+  const isLoading = loading && athletes.length === 0 && globalLeaders.length === 0 && regionsRanked.length === 0;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-6xl mx-auto px-3 sm:px-4 pt-2 pb-28 space-y-4 sm:space-y-5"
+      className="pt-2 pb-28 space-y-4"
     >
       {/* Header */}
       <div>
         {breadcrumb && (
-          <div className="flex items-center gap-1 text-sm text-gray-500 mb-1">
+          <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
             <MapPin className="w-3 h-3" />
             <span>{breadcrumb}</span>
           </div>
         )}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-[#2563EB]" />
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 leading-tight">
+        <div className="flex items-center gap-2.5">
+          <Trophy className="w-6 h-6 text-[#2563EB] shrink-0" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
             {title}
           </h1>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {context.level !== 'global' && (
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {tabs.map((t) => (
           <button
-            onClick={() => setTab('athletes')}
-            className={`px-3 sm:px-4 py-2 rounded-full transition text-sm sm:text-base font-medium ${
-              tab === 'athletes'
-                ? 'bg-[#2563EB] text-white'
+            key={t.k}
+            onClick={() => setTab(t.k)}
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              tab === t.k
+                ? 'bg-[#2563EB] text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
           >
-            Top Athletes
+            {t.label}
           </button>
-        )}
-        {context.level !== 'global' && (
-          <button
-            onClick={() => setTab('regions')}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition text-xs sm:text-sm font-medium ${
-              tab === 'regions'
-                ? 'bg-[#2563EB] text-white'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            Regions Ranking
-          </button>
-        )}
-        <button
-          onClick={() => setTab('global')}
-          className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition text-xs sm:text-sm font-medium ${
-            tab === 'global'
-              ? 'bg-[#2563EB] text-white'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
-        >
-          Global
-        </button>
+        ))}
       </div>
 
-      {/* Region / City pills */}
+      {/* Scope pills */}
       {scopeSelector && scopeSelector.items.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap">
-          <span className="text-sm text-gray-500 whitespace-nowrap shrink-0">
-            {scopeSelector.label}:
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="text-xs text-gray-500 font-medium whitespace-nowrap shrink-0 uppercase tracking-wider">
+            {scopeSelector.label}
           </span>
           {scopeSelector.items.map((item) => {
             const isCurrent = scopeSelector.current === item.id;
@@ -309,9 +292,9 @@ const Leaderboard = ({ user }) => {
               <button
                 key={item.id}
                 onClick={() => scopeSelector.onPick(item.id)}
-                className={`px-3 py-1.5 rounded-full text-sm transition whitespace-nowrap shrink-0 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                   isCurrent
-                    ? 'bg-[#2563EB] text-white'
+                    ? 'bg-[#2563EB] text-white shadow-sm'
                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
@@ -322,174 +305,178 @@ const Leaderboard = ({ user }) => {
         </div>
       )}
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && (
+        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+          <EmptyState
+            icon={XCircle}
+            title="Couldn't load leaderboard"
+            message={error}
+          />
+        </div>
+      )}
 
       {/* ---- Top Athletes ---- */}
-      {tab === 'athletes' && (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-x-auto">
-          <table className="w-full text-sm sm:text-base table-fixed sm:table-auto">
-            <thead>
-              <tr className="bg-[#2563EB] text-white">
-                <th className="px-2.5 py-2.5 sm:px-3 sm:py-3 text-left font-semibold w-10">#</th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-left font-semibold">Name</th>
-                {showRegionColumn && (
-                  <th className="px-2 py-2 sm:px-3 sm:py-3 text-left font-semibold">Region</th>
-                )}
-                <th className="px-2.5 py-2.5 sm:px-3 sm:py-3 text-center font-semibold w-14">
-                  Lvl
-                </th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-center font-semibold">
-                  ⚡
-                </th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-center font-semibold">
-                  ⭐
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {athletes.map((u, i) => (
-                <tr
-                  key={u._id}
-                  className={`border-t border-gray-100 ${
-                    u._id === user?.id ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-700 font-medium">
-                    {i + 1}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-800 font-medium truncate">
-                    {u.name}
-                  </td>
-                  {showRegionColumn && (
-                    <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-600 truncate">
-                      {u.region}
-                    </td>
-                  )}
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-gray-800 font-semibold">
-                    {u.level || 1}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-yellow-600 font-medium">
-                    {(u.energy || 0).toLocaleString()}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-gray-700">
-                    {u.xp || 0}
-                  </td>
-                </tr>
-              ))}
-              {athletes.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={showRegionColumn ? 6 : 5}
-                    className="px-3 py-6 text-center text-gray-500 text-base"
-                  >
-                    No athletes in this area yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {tab === 'athletes' && !error && (
+        isLoading ? (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft p-4">
+            <LoadingSkeleton variant="line" count={6} />
+          </div>
+        ) : athletes.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+            <EmptyState
+              icon={Users}
+              title="No athletes here yet"
+              message="Be the first to log an activity in this area and claim the top spot."
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
+                <thead>
+                  <tr className="bg-[#2563EB] text-white">
+                    <th className="px-3 py-2.5 text-left font-semibold w-12 text-xs uppercase tracking-wider">#</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Name</th>
+                    {showRegionColumn && (
+                      <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Region</th>
+                    )}
+                    <th className="px-3 py-2.5 text-center font-semibold w-16 text-xs uppercase tracking-wider">Lvl</th>
+                    <th className="px-3 py-2.5 text-right font-semibold w-24 text-xs uppercase tracking-wider">Energy</th>
+                    <th className="px-3 py-2.5 text-right font-semibold w-20 text-xs uppercase tracking-wider">XP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {athletes.map((u, i) => (
+                    <tr
+                      key={u._id}
+                      className={`border-t border-gray-100 transition-colors ${
+                        u._id === user?.id ? 'bg-[#2563EB]/5' : 'hover:bg-gray-50/60'
+                      }`}
+                    >
+                      <td className="px-3 py-2.5 text-gray-700 font-semibold tabular-nums">{i + 1}</td>
+                      <td className="px-3 py-2.5 text-gray-900 font-medium truncate max-w-[140px]">
+                        {u.name}
+                        {u._id === user?.id && (
+                          <span className="ml-2 text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">You</span>
+                        )}
+                      </td>
+                      {showRegionColumn && (
+                        <td className="px-3 py-2.5 text-gray-500 text-xs truncate max-w-[120px]">{u.region}</td>
+                      )}
+                      <td className="px-3 py-2.5 text-center text-gray-800 font-semibold tabular-nums">{u.level || 1}</td>
+                      <td className="px-3 py-2.5 text-right text-yellow-600 font-semibold tabular-nums">
+                        {(u.energy || 0).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">{u.xp || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {/* ---- Regions Ranking ---- */}
-      {tab === 'regions' && (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-x-auto">
-          <table className="w-full text-xs sm:text-sm table-fixed sm:table-auto">
-            <thead>
-              <tr className="bg-[#2563EB] text-white">
-                <th className="px-2.5 py-2.5 sm:px-3 sm:py-3 text-left font-semibold w-12">#</th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-left font-semibold">Region</th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-center font-semibold w-14">
-                  Lvl
-                </th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-center font-semibold">
-                  ⚡ Energy
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {regionsRanked.map((r, i) => (
-                <tr key={r.region || r.city || r.id || i} className="border-t border-gray-100">
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-700 font-medium">
-                    {i + 1}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-800 font-medium truncate">
-                    {r.region || r.name}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-gray-800">
-                    {r.powerStationLevel || r.communityLevel || 1}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-gray-700">
-                    {(r.totalEnergy || 0).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-              {regionsRanked.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center text-gray-500 text-sm">
-                    No data available.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {tab === 'regions' && !error && (
+        isLoading ? (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft p-4">
+            <LoadingSkeleton variant="line" count={6} />
+          </div>
+        ) : regionsRanked.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+            <EmptyState
+              icon={TrendingUp}
+              title="No region data yet"
+              message="Once athletes in this area start logging activities, regions will rank here."
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[460px]">
+                <thead>
+                  <tr className="bg-[#2563EB] text-white">
+                    <th className="px-3 py-2.5 text-left font-semibold w-12 text-xs uppercase tracking-wider">#</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Region</th>
+                    <th className="px-3 py-2.5 text-center font-semibold w-16 text-xs uppercase tracking-wider">Lvl</th>
+                    <th className="px-3 py-2.5 text-right font-semibold w-28 text-xs uppercase tracking-wider">Energy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {regionsRanked.map((r, i) => (
+                    <tr key={r.region || r.city || r.id || i} className="border-t border-gray-100 hover:bg-gray-50/60 transition-colors">
+                      <td className="px-3 py-2.5 text-gray-700 font-semibold tabular-nums">{i + 1}</td>
+                      <td className="px-3 py-2.5 text-gray-900 font-medium truncate">{r.region || r.name}</td>
+                      <td className="px-3 py-2.5 text-center text-gray-800 tabular-nums">
+                        {r.powerStationLevel || r.communityLevel || 1}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">
+                        {(r.totalEnergy || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {/* ---- Global ---- */}
-      {tab === 'global' && (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-x-auto">
-          <table className="w-full text-xs sm:text-sm table-fixed sm:table-auto">
-            <thead>
-              <tr className="bg-[#2563EB] text-white">
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-left font-semibold w-10">#</th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-left font-semibold">Name</th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-left font-semibold">Region</th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-center font-semibold w-12">
-                  Lvl
-                </th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-center font-semibold">km</th>
-                <th className="px-2 py-2 sm:px-3 sm:py-3 text-center font-semibold">⭐</th>
-              </tr>
-            </thead>
-            <tbody>
-              {globalLeaders.map((u, i) => (
-                <tr
-                  key={u._id}
-                  className={`border-t border-gray-100 ${
-                    u._id === user?.id ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-700 font-medium">
-                    {i + 1}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-800 font-medium truncate">
-                    {u.name}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-gray-600 truncate">
-                    {u.region}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-gray-800 font-semibold">
-                    {u.level || 1}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-gray-700">
-                    {u.totalDistance || 0}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3 text-center text-gray-700">
-                    {u.xp || 0}
-                  </td>
-                </tr>
-              ))}
-              {globalLeaders.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-4 text-center text-gray-500 text-sm">
-                    No global data yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {tab === 'global' && !error && (
+        isLoading ? (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft p-4">
+            <LoadingSkeleton variant="line" count={6} />
+          </div>
+        ) : globalLeaders.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+            <EmptyState
+              icon={Globe2}
+              title="No global data yet"
+              message="Global rankings will appear once athletes start logging activities."
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
+                <thead>
+                  <tr className="bg-[#2563EB] text-white">
+                    <th className="px-3 py-2.5 text-left font-semibold w-12 text-xs uppercase tracking-wider">#</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Name</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Region</th>
+                    <th className="px-3 py-2.5 text-center font-semibold w-16 text-xs uppercase tracking-wider">Lvl</th>
+                    <th className="px-3 py-2.5 text-right font-semibold w-24 text-xs uppercase tracking-wider">km</th>
+                    <th className="px-3 py-2.5 text-right font-semibold w-20 text-xs uppercase tracking-wider">XP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {globalLeaders.map((u, i) => (
+                    <tr
+                      key={u._id}
+                      className={`border-t border-gray-100 transition-colors ${
+                        u._id === user?.id ? 'bg-[#2563EB]/5' : 'hover:bg-gray-50/60'
+                      }`}
+                    >
+                      <td className="px-3 py-2.5 text-gray-700 font-semibold tabular-nums">{i + 1}</td>
+                      <td className="px-3 py-2.5 text-gray-900 font-medium truncate max-w-[140px]">
+                        {u.name}
+                        {u._id === user?.id && (
+                          <span className="ml-2 text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">You</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-gray-500 text-xs truncate max-w-[120px]">{u.region}</td>
+                      <td className="px-3 py-2.5 text-center text-gray-800 font-semibold tabular-nums">{u.level || 1}</td>
+                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">{u.totalDistance || 0}</td>
+                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">{u.xp || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
     </motion.div>
   );

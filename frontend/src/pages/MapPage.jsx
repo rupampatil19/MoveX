@@ -216,6 +216,13 @@ const MapPage = () => {
 
   const navLevel = selectedRegion ? 'region' : navCityId ? 'city' : navStateId ? 'state' : 'india';
 
+  const mapTitle = useMemo(() => {
+    if (selectedRegion) return `${selectedRegion.id} Living Map`;
+    if (navCityId && CITIES[navCityId]) return `${CITIES[navCityId].name} Living Map`;
+    if (navStateId) return `${navStateId} Living Map`;
+    return 'India Living Map';
+  }, [selectedRegion, navCityId, navStateId]);
+
   useEffect(() => {
     if (!activeCityId) return;
     if (activeCityId === navCityId) return;
@@ -327,7 +334,7 @@ const MapPage = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-      <h1 className="text-3xl font-bold text-gray-800">MoveX Living Map</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{mapTitle}</h1>
 
       <div className="space-y-2">
         <div className="flex items-center gap-1 text-sm overflow-x-auto pb-1 -mx-1 px-1">
@@ -385,8 +392,8 @@ const MapPage = () => {
             />
           )}
           {showStateHub && <MaharashtraLayer onCityClick={(cityName) => { const found = Object.values(CITIES).find((c) => c.name === cityName); if (found) navToCity(found.id); }} />}
-          {showStateHub && <CityStationsLayer cities={citiesInActiveState} cityEnergies={cityEnergies} onCityClick={(cityId) => navToCity(cityId)} size={40} showLabels={true} />}
-          {showIndia && <StateHubsLayer states={STATES} stateEnergies={stateEnergies} size={50} onStateClick={(stateId) => navToState(stateId)} />}
+          {showStateHub && <CityStationsLayer cities={citiesInActiveState} cityEnergies={cityEnergies} onCityClick={(cityId) => navToCity(cityId)} size={36} showLabels={true} />}
+          {showIndia && <StateHubsLayer states={STATES} stateEnergies={stateEnergies} size={32} onStateClick={(stateId) => navToState(stateId)} />}
           {showStateHub && STATES[activeStateId] && (
             <StateHubsLayer
               states={{ [activeStateId]: STATES[activeStateId] }}

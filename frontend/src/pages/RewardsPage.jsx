@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import API from '../api';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Gift } from 'lucide-react';
 import { useTrophy } from '../context/TrophyContext';
 
 import TrophyBalanceHeader from '../components/rewards/TrophyBalanceHeader';
@@ -11,6 +11,8 @@ import NextRewardProgress from '../components/rewards/NextRewardProgress';
 import RedemptionSuccessModal from '../components/rewards/RedemptionSuccessModal';
 import MyRewardsList from '../components/rewards/MyRewardsList';
 import RedemptionHistory from '../components/rewards/RedemptionHistory';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import EmptyState from '../components/ui/EmptyState';
 
 const CATEGORY_MAP = {
   all: 'All',
@@ -94,15 +96,15 @@ const RewardsPage = () => {
   const displayBalance = balanceLoading ? null : balance ?? 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 pt-2 pb-28 space-y-5">
+    <div className="max-w-6xl mx-auto pt-2 pb-28 space-y-5">
       <div>
         <div className="flex items-center gap-2">
           <Sparkles className="text-[#2563EB]" size={24} />
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             MoveX Bazaar &amp; Rewards
           </h1>
         </div>
-        <p className="text-sm text-gray-600 mt-2">
+        <p className="text-sm text-gray-500 mt-1">
           Redeem your verified MoveX Trophies
         </p>
       </div>
@@ -113,7 +115,7 @@ const RewardsPage = () => {
         <NextRewardProgress balance={displayBalance} rewards={catalog} />
       )}
 
-      <div className="flex gap-2 border-b overflow-x-auto -mx-4 px-4">
+      <div className="flex gap-2 border-b border-gray-200 overflow-x-auto -mx-4 px-4">
         {[
           { k: 'catalog', label: 'Catalog' },
           { k: 'mine', label: 'My Rewards' },
@@ -122,7 +124,7 @@ const RewardsPage = () => {
           <button
             key={t.k}
             onClick={() => setTab(t.k)}
-            className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition whitespace-nowrap ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition whitespace-nowrap ${
               tab === t.k
                 ? 'border-[#2563EB] text-[#2563EB]'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -144,18 +146,25 @@ const RewardsPage = () => {
           />
 
           {catalogLoading ? (
-            <p className="text-sm text-gray-500">Loading rewards…</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <LoadingSkeleton key={i} variant="card" />
+              ))}
+            </div>
           ) : visible.length === 0 ? (
-            <p className="text-sm text-gray-500">No rewards match this filter.</p>
+            <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+              <EmptyState
+                icon={Gift}
+                title="No rewards match this filter"
+                message="Try a different category or check back soon — new rewards drop weekly."
+              />
+            </div>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35 }}
-              className="
-                grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4
-                md:gap-5
-              "
+              className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4"
             >
               {visible.map((r) => (
                 <RewardCard
