@@ -61,20 +61,48 @@ export default function MoveXMoment({ isOpen, onClose, data }) {
     try {
       const dataUrl = await exportPng();
       if (!dataUrl) return;
+
       const res = await fetch(dataUrl);
       const blob = await res.blob();
-      const file = new File([blob], 'movex-moment.png', { type: 'image/png' });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'My MoveX Moment', text: caption });
+      // IMPORTANT: file name MUST have .png extension or Instagram/iOS throws DOMException
+      const file = new File([blob], `movex-moment-${Date.now()}.png`, {
+        type: 'image/png',
+        lastModified: Date.now(),
+      });
+
+      // Detect file share support
+      const canShareFiles =
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [file] });
+
+      if (canShareFiles) {
+        // CRITICAL FIX: pass ONLY files with empty title.
+        // No text, no url, non-empty title breaks Instagram.
+        try {
+          await navigator.share({ files: [file], title: '' });
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') {
+            // User cancelled — that's fine, no fallback needed
+            return;
+          }
+          console.warn('navigator.share failed, falling back to download:', shareErr);
+          // Fallback: download the image
+          const link = document.createElement('a');
+          link.download = `movex-moment-${Date.now()}.png`;
+          link.href = dataUrl;
+          link.click();
+        }
       } else {
+        // Desktop or unsupported browser — download instead
         const link = document.createElement('a');
         link.download = `movex-moment-${Date.now()}.png`;
         link.href = dataUrl;
         link.click();
       }
     } catch (err) {
-      if (err.name !== 'AbortError') console.error('Share failed:', err);
+      console.error('Share/export failed:', err);
+      alert('Could not export image. Please try again.');
     } finally {
       setBusy(false);
     }
