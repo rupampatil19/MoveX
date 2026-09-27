@@ -49,7 +49,7 @@ const BottomNavigation = ({ user, logout }) => {
   return (
     <>
       {/* Floating pill nav */}
-      <nav className="md:hidden fixed bottom-3 left-3 right-3 glass-strong rounded-2xl border border-white/50 z-40 flex justify-around items-center px-2 py-2 shadow-2xl shadow-[#2563EB]/15">
+      <nav className="md:hidden fixed bottom-nav-safe left-3 right-3 glass-strong rounded-2xl border border-white/50 z-40 flex justify-around items-center px-2 py-2 shadow-2xl shadow-[#2563EB]/15">
         {primaryItems.map((item) => {
           const isActive = location.pathname === item.to;
           const Icon = item.icon;

@@ -16,10 +16,7 @@ export default function LoadingSkeleton({
   return (
     <div className={`space-y-2 ${className}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className={`animate-pulse bg-gray-200/70 ${shape}`}
-        />
+        <div key={i} className={`shimmer ${shape}`} />
       ))}
     </div>
   );
