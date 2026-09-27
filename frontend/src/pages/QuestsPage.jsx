@@ -2,13 +2,23 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import { motion } from 'framer-motion';
-import { Zap, Trophy, Gift, Clock, ChevronRight, Target, ArrowRight } from 'lucide-react';
+import {
+  Zap, Trophy, Gift, Clock, ChevronRight, Target, ArrowRight
+} from 'lucide-react';
 import MoveXCard from '../components/ui/MoveXCard';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
 
 const categories = ['ALL', 'DAILY', 'WEEKLY', 'COMMUNITY', 'REGIONAL', 'ATHLETE'];
+
+const CATEGORY_STYLES = {
+  DAILY:     { bg: 'bg-gradient-to-br from-[#3B82F6] to-[#2563EB]', text: 'text-white' },
+  WEEKLY:    { bg: 'bg-gradient-to-br from-violet-500 to-violet-600', text: 'text-white' },
+  COMMUNITY: { bg: 'bg-gradient-to-br from-mint-400 to-mint-500', text: 'text-white' },
+  REGIONAL:  { bg: 'bg-gradient-to-br from-gold-400 to-gold-500', text: 'text-white' },
+  ATHLETE:   { bg: 'bg-gradient-to-br from-ember-400 to-ember-500', text: 'text-white' },
+};
 
 const QuestsPage = () => {
   const navigate = useNavigate();
@@ -46,11 +56,13 @@ const QuestsPage = () => {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto pt-2 space-y-4">
+      <div className="space-y-4">
         <LoadingSkeleton variant="card" />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <LoadingSkeleton key={i} variant="card" />
+            <MoveXCard key={i} variant="bento" padded={false} className="p-4 shadow-premium">
+              <LoadingSkeleton variant="card" />
+            </MoveXCard>
           ))}
         </div>
       </div>
@@ -59,16 +71,14 @@ const QuestsPage = () => {
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto pt-2">
-        <MoveXCard>
-          <EmptyState
-            icon={Target}
-            title="Couldn't load quests"
-            message={error}
-            action={<Button onClick={() => window.location.reload()}>Retry</Button>}
-          />
-        </MoveXCard>
-      </div>
+      <MoveXCard>
+        <EmptyState
+          icon={Target}
+          title="Couldn't load quests"
+          message={error}
+          action={<Button onClick={() => window.location.reload()}>Retry</Button>}
+        />
+      </MoveXCard>
     );
   }
 
@@ -76,35 +86,39 @@ const QuestsPage = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-6xl mx-auto pt-2 pb-28 space-y-5"
+      className="space-y-4 sm:space-y-5 pb-28"
     >
-      {/* HERO */}
-      <div className="bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white rounded-3xl p-5 sm:p-6 md:p-7 shadow-hero">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight mb-1.5">
-          MoveX Quests &amp; Community Challenges
-        </h1>
-        <p className="text-sm md:text-base text-white/85 mb-4 max-w-2xl">
-          Complete daily movement targets, weekly milestones, community goals and regional
-          challenges to unlock Energy, Trophies, XP and rewards.
-        </p>
-        <button
-          onClick={() => navigate('/start')}
-          className="inline-flex items-center gap-2 bg-white text-[#2563EB] font-semibold px-4 py-2 rounded-full hover:bg-gray-50 transition text-sm shadow-sm"
-        >
-          Start Quest Activity <ArrowRight className="w-4 h-4" />
-        </button>
+      {/* SPATIAL HERO */}
+      <div className="relative hero-premium text-white rounded-hero p-5 sm:p-6 md:p-7 shadow-hero">
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-10 w-40 h-40 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+        <div className="relative">
+
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight mb-1.5">
+            Quests &amp; Challenges
+          </h1>
+          <p className="text-sm md:text-base text-white/85 mb-4 max-w-2xl">
+            Complete daily movement targets, weekly milestones, community goals, and regional challenges.
+          </p>
+          <button
+            onClick={() => navigate('/start')}
+            className="inline-flex items-center gap-2 bg-white text-[#2563EB] font-semibold px-4 py-2 rounded-full hover:bg-gray-50 transition text-sm shadow-md"
+          >
+            Start Quest Activity <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* FILTERS */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full whitespace-nowrap text-xs sm:text-sm font-medium transition shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full whitespace-nowrap text-xs sm:text-sm font-medium transition shrink-0 ${
               filter === cat
                 ? 'bg-[#2563EB] text-white shadow-sm'
-                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                : 'bg-white text-ink-700 border border-surface-200 hover:border-surface-300 hover:shadow-sm'
             }`}
           >
             {cat}
@@ -112,7 +126,7 @@ const QuestsPage = () => {
         ))}
       </div>
 
-      {/* QUEST GRID */}
+      {/* QUESTS GRID */}
       {filteredQuests.length === 0 ? (
         <MoveXCard>
           <EmptyState
@@ -122,7 +136,7 @@ const QuestsPage = () => {
           />
         </MoveXCard>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {filteredQuests.map((uq) => {
             const quest = uq.questId;
             const progressPercent =
@@ -137,21 +151,37 @@ const QuestsPage = () => {
             const hoursLeft = Math.floor(timeRemaining / (1000 * 60 * 60));
             const daysLeft = Math.floor(hoursLeft / 24);
 
+            const metricLabel =
+              quest.metric === 'duration_minutes' ? 'min'
+              : quest.metric === 'distance_km' ? 'km'
+              : quest.metric === 'activities' ? 'acts'
+              : quest.metric === 'energy' ? 'E'
+              : '';
+
             return (
-              <MoveXCard key={uq._id} padded={false} className="p-4 flex flex-col h-full">
+              <MoveXCard
+                key={uq._id}
+                variant="bento"
+                padded={false}
+                className="p-4 flex flex-col h-full shadow-premium hover:shadow-premium-lg transition-shadow duration-200"
+              >
                 {/* Header row */}
                 <div className="flex justify-between items-start gap-1 mb-2">
-                  <span className="inline-block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#2563EB] bg-[#2563EB]/10 px-2 py-0.5 rounded-full">
+                  <span className={`inline-block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm ${
+                      (CATEGORY_STYLES[quest.category] || CATEGORY_STYLES.DAILY).bg
+                    } ${
+                      (CATEGORY_STYLES[quest.category] || CATEGORY_STYLES.DAILY).text
+                    }`}>
                     {quest.category}
                   </span>
                   {timeRemaining > 0 && !isClaimed && !isExpired && (
-                    <span className="text-[9px] sm:text-[10px] text-gray-500 flex items-center gap-0.5 whitespace-nowrap">
+                    <span className="text-[9px] sm:text-[10px] text-ink-500 inline-flex items-center gap-0.5 whitespace-nowrap">
                       <Clock className="w-2.5 h-2.5" />
                       {daysLeft > 0 ? `${daysLeft}d` : `${hoursLeft}h`}
                     </span>
                   )}
                   {isClaimed && (
-                    <span className="text-[9px] sm:text-[10px] font-medium text-gray-400">
+                    <span className="text-[9px] sm:text-[10px] font-medium text-ink-400">
                       CLAIMED
                     </span>
                   )}
@@ -163,36 +193,27 @@ const QuestsPage = () => {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900 leading-tight">
+                <h3 className="text-sm sm:text-base font-semibold text-ink-900 leading-tight">
                   {quest.title}
                 </h3>
 
                 {/* Description */}
-                <p className="text-[11px] sm:text-xs text-gray-500 mt-1 mb-3 flex-1 line-clamp-2">
+                <p className="text-[11px] sm:text-xs text-ink-500 mt-1 mb-3 flex-1 line-clamp-2">
                   {quest.description}
                 </p>
 
                 {/* Progress */}
                 <div className="mb-2">
-                  <div className="flex justify-between text-[10px] sm:text-xs text-gray-600 mb-1">
+                  <div className="flex justify-between text-[10px] sm:text-xs text-ink-700 mb-1">
                     <span className="tabular-nums">
-                      {uq.progress} / {quest.target}{' '}
-                      {quest.metric === 'duration_minutes'
-                        ? 'min'
-                        : quest.metric === 'distance_km'
-                        ? 'km'
-                        : quest.metric === 'activities'
-                        ? 'acts'
-                        : quest.metric === 'energy'
-                        ? 'E'
-                        : ''}
+                      {uq.progress} / {quest.target} {metricLabel}
                     </span>
                     <span className="font-semibold tabular-nums">{Math.round(progressPercent)}%</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                  <div className="w-full bg-surface-100 rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-1.5 rounded-full transition-all ${
-                        isCompleted ? 'bg-green-500' : 'bg-[#2563EB]'
+                        isCompleted ? 'bg-mint-500' : 'bg-[#2563EB]'
                       }`}
                       style={{ width: `${progressPercent}%` }}
                     />
@@ -202,7 +223,7 @@ const QuestsPage = () => {
                 {/* Rewards */}
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
                   {quest.reward.energy > 0 && (
-                    <span className="text-[10px] sm:text-xs font-semibold text-yellow-600 inline-flex items-center gap-0.5">
+                    <span className="text-[10px] sm:text-xs font-semibold text-gold-600 inline-flex items-center gap-0.5">
                       <Zap className="w-3 h-3" /> +{quest.reward.energy}
                     </span>
                   )}
@@ -221,7 +242,7 @@ const QuestsPage = () => {
                 {/* Action */}
                 <div>
                   {isClaimed ? (
-                    <div className="text-center text-gray-400 py-2 text-xs font-medium">
+                    <div className="text-center text-ink-400 py-2 text-xs font-medium">
                       Claimed
                     </div>
                   ) : isCompleted ? (

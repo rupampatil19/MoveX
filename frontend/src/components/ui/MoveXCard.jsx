@@ -1,8 +1,20 @@
 import { Link } from 'react-router-dom';
 
+/**
+ * MoveXCard — unified card primitive.
+ *
+ * Variants:
+ *   default  — standard white card on soft background
+ *   premium  — gradient border + richer shadow (hero-adjacent content)
+ *   metric   — slightly elevated (key metrics)
+ *   bento    — mid-weight (Bento grids)
+ *   hero     — strong shadow (hero sections)
+ *   glass    — translucent glass (floating overlays only)
+ */
 export default function MoveXCard({
   children,
   className = '',
+  variant,
   elevated = false,
   hero = false,
   padded = true,
@@ -10,14 +22,20 @@ export default function MoveXCard({
   to,
   ...rest
 }) {
+  const v = variant || (hero ? 'hero' : elevated ? 'metric' : 'default');
   const padding = padded ? 'p-5' : '';
-  const radius = hero ? 'rounded-3xl' : 'rounded-2xl';
-  const shadow = hero
-    ? 'shadow-[0_8px_24px_rgba(37,99,235,0.15)]'
-    : elevated
-    ? 'shadow-[0_4px_12px_rgba(37,99,235,0.08)]'
-    : 'shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]';
-  const base = `bg-white border border-gray-200/80 ${radius} ${padding} ${shadow} ${className}`;
+  const radius = v === 'hero' ? 'rounded-hero' : v === 'glass' ? 'rounded-panel' : 'rounded-card';
+
+  const styles = {
+    default: 'bg-white border border-surface-200/80 shadow-soft',
+    premium: 'premium-card',
+    metric: 'bg-white border border-surface-200/80 shadow-elevated',
+    bento: 'bg-white border border-surface-200/80 shadow-card',
+    hero: 'bg-white border border-surface-200/80 shadow-hero',
+    glass: 'glass-strong',
+  };
+
+  const base = `${styles[v] || styles.default} ${radius} ${padding} ${className}`;
 
   if (to) {
     return (

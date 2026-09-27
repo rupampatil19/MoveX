@@ -128,7 +128,7 @@ const STATES = {
 function createHubIcon(imagePath) {
   return L.divIcon({
     className: 'hub-marker',
-    html: `<div style="width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid #00CFFF;box-shadow:0 0 10px rgba(0,207,255,0.5);display:flex;align-items:center;justify-content:center;background:transparent;"><img src="${imagePath}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" /></div>`,
+    html: `<div style="width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid rgba(37,99,235,0.6);box-shadow:0 4px 12px rgba(15,23,42,0.15),0 0 16px rgba(37,99,235,0.25);display:flex;align-items:center;justify-content:center;background:transparent;"><img src="${imagePath}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" /></div>`,
     iconSize: [60, 60], iconAnchor: [30, 30], tooltipAnchor: [0, -30],
   });
 }
@@ -334,40 +334,40 @@ const MapPage = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{mapTitle}</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-ink-900">{mapTitle}</h1>
 
       <div className="space-y-2">
         <div className="flex items-center gap-1 text-sm overflow-x-auto pb-1 -mx-1 px-1">
-          <button onClick={navToIndia} className={`px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition shrink-0 ${navLevel === 'india' ? 'bg-[#2563EB] text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>🇮🇳 India</button>
-          {navStateId && (<><ChevronRight className="w-4 h-4 text-gray-400 shrink-0" /><button onClick={() => navToState(navStateId)} className={`px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition shrink-0 ${navLevel === 'state' ? 'bg-[#2563EB] text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>{navStateId}</button></>)}
-          {navCityId && CITIES[navCityId] && (<><ChevronRight className="w-4 h-4 text-gray-400 shrink-0" /><button onClick={() => navToCity(navCityId)} className={`px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition shrink-0 ${navLevel === 'city' ? 'bg-[#2563EB] text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>{CITIES[navCityId].name}</button></>)}
-          {selectedRegion && (<><ChevronRight className="w-4 h-4 text-gray-400 shrink-0" /><button className="px-3 py-1.5 rounded-full whitespace-nowrap font-medium bg-[#2563EB] text-white shrink-0">{selectedRegion.id}</button></>)}
+          <button onClick={navToIndia} className={`px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition shrink-0 shadow-sm ${navLevel === 'india' ? 'bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-md shadow-[#2563EB]/25' : 'bg-white border border-surface-200 hover:border-surface-300 text-ink-700'}`}>🇮🇳 India</button>
+          {navStateId && (<><ChevronRight className="w-4 h-4 text-gray-400 shrink-0" /><button onClick={() => navToState(navStateId)} className={`px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition shrink-0 shadow-sm ${navLevel === 'state' ? 'bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-md shadow-[#2563EB]/25' : 'bg-white border border-surface-200 hover:border-surface-300 text-ink-700'}`}>{navStateId}</button></>)}
+          {navCityId && CITIES[navCityId] && (<><ChevronRight className="w-4 h-4 text-gray-400 shrink-0" /><button onClick={() => navToCity(navCityId)} className={`px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition shrink-0 shadow-sm ${navLevel === 'city' ? 'bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-md shadow-[#2563EB]/25' : 'bg-white border border-surface-200 hover:border-surface-300 text-ink-700'}`}>{CITIES[navCityId].name}</button></>)}
+          {selectedRegion && (<><ChevronRight className="w-4 h-4 text-gray-400 shrink-0" /><button className="px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-md shadow-[#2563EB]/25 shrink-0">{selectedRegion.id}</button></>)}
         </div>
 
         {navLevel === 'india' && (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {Object.values(STATES).map((st) => (
-              <button key={st.id} onClick={() => navToState(st.id)} className="px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-medium bg-white border border-gray-200 hover:bg-gray-50 hover:border-[#2563EB] text-gray-700 transition shrink-0">{st.name}</button>
+              <button key={st.id} onClick={() => navToState(st.id)} className="px-3.5 py-1.5 rounded-full whitespace-nowrap text-sm font-medium bg-white border border-surface-200 hover:border-[#2563EB]/60 hover:shadow-sm text-ink-700 transition shrink-0">{st.name}</button>
             ))}
           </div>
         )}
         {navLevel === 'state' && siblingCities.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {siblingCities.map((c) => (
-              <button key={c.id} onClick={() => navToCity(c.id)} className="px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-medium bg-white border border-gray-200 hover:bg-gray-50 hover:border-[#2563EB] text-gray-700 transition shrink-0">{c.name}</button>
+              <button key={c.id} onClick={() => navToCity(c.id)} className="px-3.5 py-1.5 rounded-full whitespace-nowrap text-sm font-medium bg-white border border-surface-200 hover:border-[#2563EB]/60 hover:shadow-sm text-ink-700 transition shrink-0">{c.name}</button>
             ))}
           </div>
         )}
         {navLevel === 'city' && siblingRegions.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {siblingRegions.map((r) => (
-              <button key={r.id} onClick={() => navToRegion(r.id)} className="px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-medium bg-white border border-gray-200 hover:bg-gray-50 hover:border-[#2563EB] text-gray-700 transition shrink-0">{r.id}</button>
+              <button key={r.id} onClick={() => navToRegion(r.id)} className="px-3.5 py-1.5 rounded-full whitespace-nowrap text-sm font-medium bg-white border border-surface-200 hover:border-[#2563EB]/60 hover:shadow-sm text-ink-700 transition shrink-0">{r.id}</button>
             ))}
           </div>
         )}
       </div>
 
-      <div className="h-[75vh] rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative">
+      <div className="h-[75vh] rounded-hero overflow-hidden border border-surface-200/80 shadow-card relative">
         <MapContainer
           center={mapCenter}
           zoom={zoom}
@@ -429,7 +429,7 @@ const MapPage = () => {
           })}
         </MapContainer>
 
-        <div className="absolute bottom-4 left-3 right-3 mx-auto md:left-4 md:right-auto md:mx-0 bg-[#0B1F2A]/95 backdrop-blur text-white rounded-2xl p-4 shadow-xl w-auto md:w-80 max-h-[60vh] overflow-y-auto z-[1000]">
+        <div className="absolute bottom-4 left-3 right-3 mx-auto md:left-4 md:right-auto md:mx-0 glass-strong text-ink-900 rounded-panel p-4 shadow-glass w-auto md:w-80 max-h-[60vh] overflow-y-auto z-[1000]">
           {selectedState ? (() => {
             const level = getStateLevel(selectedState.energy);
             const hubImage = getHubImagePath(level);
@@ -437,34 +437,34 @@ const MapPage = () => {
             const cityBreakdown = selectedState.cityIds.map((cid) => { const c = CITIES[cid]; if (!c) return null; return { cityId: cid, name: c.name, energy: cityEnergies[cid] || 0 }; }).filter(Boolean).sort((a, b) => b.energy - a.energy);
             return (
               <>
-                <div className="flex items-center gap-3"><img src={hubImage} alt={`${selectedState.name} Hub`} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid #00CFFF', boxShadow: '0 0 10px rgba(0,207,255,0.5)' }} /><div><h2 className="text-lg font-bold text-white">{selectedState.name} Energy Hub</h2><p className="text-xs text-[#7DD3FC]">Level {level} • {hubName}</p></div></div>
-                <div className="mt-3 space-y-2 text-sm"><div className="flex justify-between text-gray-300"><span>State Energy</span><span className="font-medium text-white">{selectedState.energy.toLocaleString()}</span></div><div className="w-full bg-gray-700 rounded-full h-2"><div className="bg-[#20C9A6] h-2 rounded-full" style={{ width: `${Math.min((selectedState.energy / 1000000) * 100, 100)}%` }} /></div></div>
-                <div className="mt-3"><p className="text-xs text-gray-400 mb-1">Cities contributing</p>{cityBreakdown.length === 0 ? <p className="text-xs text-gray-500">No cities yet</p> : cityBreakdown.slice(0, 8).map((cb) => (<div key={cb.cityId} className="flex justify-between text-xs py-1"><span className="text-gray-300">{cb.name}</span><span className="text-white font-medium">{cb.energy.toLocaleString()}</span></div>))}</div>
+                <div className="flex items-center gap-3"><img src={hubImage} alt={`${selectedState.name} Hub`} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(37,99,235,0.55)', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' }} /><div><h2 className="text-lg font-bold text-ink-900">{selectedState.name} Energy Hub</h2><p className="text-xs text-[#2563EB] font-medium">Level {level} • {hubName}</p></div></div>
+                <div className="mt-3 space-y-2 text-sm"><div className="flex justify-between text-ink-700"><span>State Energy</span><span className="font-medium text-ink-900">{selectedState.energy.toLocaleString()}</span></div><div className="w-full bg-surface-100 rounded-full h-2"><div className="bg-[#20C9A6] h-2 rounded-full" style={{ width: `${Math.min((selectedState.energy / 1000000) * 100, 100)}%` }} /></div></div>
+                <div className="mt-3"><p className="text-xs text-ink-500 mb-1">Cities contributing</p>{cityBreakdown.length === 0 ? <p className="text-xs text-ink-400">No cities yet</p> : cityBreakdown.slice(0, 8).map((cb) => (<div key={cb.cityId} className="flex justify-between text-xs py-1"><span className="text-ink-700">{cb.name}</span><span className="text-ink-900 font-medium">{cb.energy.toLocaleString()}</span></div>))}</div>
                 <button onClick={() => { const firstCity = selectedState.cityIds[0]; if (firstCity) { setSelectedState(null); navToCity(firstCity); } }} className="mt-4 w-full bg-[#2563EB] text-white py-2 rounded-lg font-medium">View Cities</button>
                 <Link to={`/leaderboard?scope=state&stateId=${encodeURIComponent(selectedState.id)}`} className="mt-2 w-full bg-[#188AD8] text-white text-center py-2 rounded-lg font-medium block">{selectedState.name} Leaderboard</Link>
               </>
             );
           })() : selectedCity ? (
             <>
-              <div className="flex items-center gap-3"><img src={selectedCity.imagePath} alt={`${selectedCity.city.name} Hub`} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid #00CFFF', boxShadow: '0 0 10px rgba(0,207,255,0.5)' }} /><div><h2 className="text-lg font-bold text-white">{selectedCity.city.name} Hub</h2><p className="text-xs text-[#7DD3FC]">Level {selectedCity.level} • {selectedCity.hubName}</p></div></div>
-              <div className="mt-3 space-y-2 text-sm"><div className="flex justify-between text-gray-300"><span>Collective Energy</span><span className="font-medium text-white">{selectedCity.totalEnergy.toLocaleString()}</span></div><div className="w-full bg-gray-700 rounded-full h-2"><div className="bg-[#20C9A6] h-2 rounded-full" style={{ width: `${Math.min((selectedCity.totalEnergy / 500000) * 100, 100)}%` }} /></div><div className="flex justify-between text-xs text-gray-400 mt-1"><span>Active Regions</span><span className="text-white">{city.regions.length}</span></div></div>
+              <div className="flex items-center gap-3"><img src={selectedCity.imagePath} alt={`${selectedCity.city.name} Hub`} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(37,99,235,0.55)', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' }} /><div><h2 className="text-lg font-bold text-ink-900">{selectedCity.city.name} Hub</h2><p className="text-xs text-[#2563EB] font-medium">Level {selectedCity.level} • {selectedCity.hubName}</p></div></div>
+              <div className="mt-3 space-y-2 text-sm"><div className="flex justify-between text-ink-700"><span>Collective Energy</span><span className="font-medium text-ink-900">{selectedCity.totalEnergy.toLocaleString()}</span></div><div className="w-full bg-surface-100 rounded-full h-2"><div className="bg-[#20C9A6] h-2 rounded-full" style={{ width: `${Math.min((selectedCity.totalEnergy / 500000) * 100, 100)}%` }} /></div><div className="flex justify-between text-xs text-gray-400 mt-1"><span>Active Regions</span><span className="text-white">{city.regions.length}</span></div></div>
               <button onClick={() => setFlyTarget({ center: city.center, zoom: 12 })} className="mt-4 w-full bg-[#2563EB] text-white py-2 rounded-lg font-medium">Explore {city.name} Regions</button>
               <Link to={`/leaderboard?scope=city&cityId=${encodeURIComponent(city.id)}&stateId=${encodeURIComponent(activeStateId)}`} className="mt-2 w-full bg-[#188AD8] text-white text-center py-2 rounded-lg font-medium block">{city.name} Leaderboard</Link>
             </>
           ) : selectedRegion ? (
             <>
-              <div className="flex items-center gap-3"><img src={selectedRegion.hubImage} alt={selectedRegion.hubName} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid #00CFFF', boxShadow: '0 0 8px rgba(0,207,255,0.4)' }} /><h2 className="text-xl font-bold text-white">{selectedRegion.id}</h2></div>
-              <p className="text-sm text-[#7DD3FC] mt-2">{selectedRegion.hubName} • Level {selectedRegion.level}</p>
-              <div className="mt-3 space-y-2 text-sm"><div className="flex justify-between text-gray-300"><span>Regional Energy</span><span className="font-medium text-white">{selectedRegion.energy.toLocaleString()} / {selectedRegion.level >= 5 ? 'Max' : 20000 * selectedRegion.level}</span></div><div className="w-full bg-gray-700 rounded-full h-2"><div className="bg-[#20C9A6] h-2 rounded-full" style={{ width: `${selectedRegion.level >= 5 ? 100 : Math.min((selectedRegion.energy / (20000 * selectedRegion.level)) * 100, 100)}%` }} /></div></div>
+              <div className="flex items-center gap-3"><img src={selectedRegion.hubImage} alt={selectedRegion.hubName} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(37,99,235,0.55)', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' }} /><h2 className="text-xl font-bold text-ink-900">{selectedRegion.id}</h2></div>
+              <p className="text-sm text-[#2563EB] font-medium mt-2">{selectedRegion.hubName} • Level {selectedRegion.level}</p>
+              <div className="mt-3 space-y-2 text-sm"><div className="flex justify-between text-ink-700"><span>Regional Energy</span><span className="font-medium text-ink-900">{selectedRegion.energy.toLocaleString()} / {selectedRegion.level >= 5 ? 'Max' : 20000 * selectedRegion.level}</span></div><div className="w-full bg-surface-100 rounded-full h-2"><div className="bg-[#20C9A6] h-2 rounded-full" style={{ width: `${selectedRegion.level >= 5 ? 100 : Math.min((selectedRegion.energy / (20000 * selectedRegion.level)) * 100, 100)}%` }} /></div></div>
               <div className="mt-4 flex gap-2"><Link to={`/leaderboard?scope=region&regionId=${encodeURIComponent(selectedRegion.id)}&cityId=${encodeURIComponent(city.id)}&stateId=${encodeURIComponent(activeStateId)}`} className="flex-1 bg-[#188AD8] text-white text-center py-2 rounded-lg">Leaderboard</Link><Link to="/quests" className="flex-1 bg-[#20C9A6] text-white text-center py-2 rounded-lg">Challenges</Link></div>
             </>
           ) : (
-            <p className="text-gray-300">{navLevel === 'india' ? `🇮🇳 India Total: ${indiaTotalEnergy.toLocaleString()} energy` : navLevel === 'state' ? `Click a city Hub in ${navStateId} to explore.` : navLevel === 'city' ? `Pick a region of ${CITIES[navCityId]?.name} above.` : 'Explore the map.'}</p>
+            <p className="text-ink-700">{navLevel === 'india' ? `🇮🇳 India Total: ${indiaTotalEnergy.toLocaleString()} energy` : navLevel === 'state' ? `Click a city Hub in ${navStateId} to explore.` : navLevel === 'city' ? `Pick a region of ${CITIES[navCityId]?.name} above.` : 'Explore the map.'}</p>
           )}
         </div>
 
         {showRegions && (
-          <div className="absolute top-3 right-3 md:top-auto md:bottom-4 md:right-4 bg-white/90 rounded-xl p-2 sm:p-3 shadow-lg text-xs sm:text-sm z-[1000] max-w-[180px] sm:max-w-xs">
+          <div className="absolute top-3 right-3 md:top-auto md:bottom-4 md:right-4 bg-white rounded-panel p-2.5 sm:p-3 shadow-card border border-surface-200/70 text-xs sm:text-sm z-[1000] max-w-[180px] sm:max-w-xs">
             <h3 className="font-semibold text-gray-800 mb-1">{city.name} Regions</h3>
             {city.regions.map((r) => (<div key={r.id} className="flex items-center gap-1 sm:gap-2"><span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: r.color }}></span><span className="text-gray-700">{r.id}</span></div>))}
             <h3 className="font-semibold text-gray-800 mt-2 mb-1">Hub Levels</h3>

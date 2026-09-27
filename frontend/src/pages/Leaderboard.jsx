@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import { motion } from 'framer-motion';
 import {
-  Trophy, MapPin, Users, Globe2, TrendingUp, XCircle, Zap
+  Trophy, MapPin, Users, Globe2, TrendingUp, XCircle, Navigation
 } from 'lucide-react';
 import {
   getCityForRegion,
@@ -12,8 +12,22 @@ import {
   getRegionsForCity,
   getCitiesForState,
 } from '../data/geoHierarchy';
+import MoveXCard from '../components/ui/MoveXCard';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import EmptyState from '../components/ui/EmptyState';
+
+/**
+ * Format a number safely:
+ *   - Removes float precision noise (71.7700000000001 -> 71.77)
+ *   - Rounds to `decimals` places
+ *   - Adds locale separators when `locale` is true
+ */
+function fmtNum(value, decimals = 0, locale = false) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '0';
+  const rounded = Number(n.toFixed(decimals));
+  return locale ? rounded.toLocaleString() : String(rounded);
+}
 
 function useGeoContext(user, searchParams) {
   return useMemo(() => {
@@ -23,43 +37,19 @@ function useGeoContext(user, searchParams) {
     const stateId = searchParams.get('stateId');
 
     if (scope === 'global') return { level: 'global' };
-
-    if (scope === 'state' && stateId) {
-      return { level: 'state', stateId, cityId: null, regionId: null };
-    }
-
+    if (scope === 'state' && stateId) return { level: 'state', stateId, cityId: null, regionId: null };
     if (scope === 'city' && cityId) {
       const city = getCityById(cityId);
-      return {
-        level: 'city',
-        stateId: city?.stateId || null,
-        cityId,
-        regionId: null,
-      };
+      return { level: 'city', stateId: city?.stateId || null, cityId, regionId: null };
     }
-
     if (scope === 'region' && regionId) {
       const city = getCityForRegion(regionId);
-      return {
-        level: 'region',
-        stateId: city?.stateId || null,
-        cityId: city?.id || null,
-        regionId,
-      };
+      return { level: 'region', stateId: city?.stateId || null, cityId: city?.id || null, regionId };
     }
-
     if (user?.region) {
       const city = getCityForRegion(user.region);
-      if (city) {
-        return {
-          level: 'region',
-          stateId: city.stateId,
-          cityId: city.id,
-          regionId: user.region,
-        };
-      }
+      if (city) return { level: 'region', stateId: city.stateId, cityId: city.id, regionId: user.region };
     }
-
     return { level: 'global' };
   }, [searchParams, user]);
 }
@@ -67,10 +57,7 @@ function useGeoContext(user, searchParams) {
 function useTitleAndBreadcrumb(context, tab) {
   return useMemo(() => {
     const { level, stateId, cityId, regionId } = context;
-
-    if (level === 'global') {
-      return { title: 'Global Leaderboard', breadcrumb: 'India' };
-    }
+    if (level === 'global') return { title: 'Global Leaderboard', breadcrumb: 'India', scopeLabel: 'Global' };
 
     const state = stateId ? getStateById(stateId) : null;
     const city = cityId ? getCityById(cityId) : null;
@@ -78,37 +65,29 @@ function useTitleAndBreadcrumb(context, tab) {
     if (tab === 'regions') {
       if (level === 'region' || level === 'city') {
         return {
-          title: `${city?.name || 'City'} Regions Ranking`,
+          title: `${city?.name || 'City'} Regions`,
           breadcrumb: [city?.name, state?.name].filter(Boolean).join(' · '),
+          scopeLabel: city?.name || 'City',
         };
       }
       if (level === 'state') {
-        return {
-          title: `${state?.name || 'State'} Regions Ranking`,
-          breadcrumb: 'India',
-        };
+        return { title: `${state?.name || 'State'} Regions`, breadcrumb: 'India', scopeLabel: state?.name || 'State' };
       }
     }
-
     if (level === 'region') {
       return {
         title: `${regionId} Leaderboard`,
         breadcrumb: [city?.name, state?.name].filter(Boolean).join(' · '),
+        scopeLabel: regionId,
       };
     }
     if (level === 'city') {
-      return {
-        title: `${city?.name || 'City'} Leaderboard`,
-        breadcrumb: state?.name || '',
-      };
+      return { title: `${city?.name || 'City'} Leaderboard`, breadcrumb: state?.name || '', scopeLabel: city?.name || 'City' };
     }
     if (level === 'state') {
-      return {
-        title: `${state?.name || 'State'} Leaderboard`,
-        breadcrumb: 'India',
-      };
+      return { title: `${state?.name || 'State'} Leaderboard`, breadcrumb: 'India', scopeLabel: state?.name || 'State' };
     }
-    return { title: 'Leaderboard', breadcrumb: '' };
+    return { title: 'Leaderboard', breadcrumb: '', scopeLabel: '' };
   }, [context, tab]);
 }
 
@@ -117,7 +96,7 @@ const Leaderboard = ({ user }) => {
 
   const context = useGeoContext(user, searchParams);
   const [tab, setTab] = useState('athletes');
-  const { title, breadcrumb } = useTitleAndBreadcrumb(context, tab);
+  const { title, breadcrumb, scopeLabel } = useTitleAndBreadcrumb(context, tab);
 
   const [athletes, setAthletes] = useState([]);
   const [regionsRanked, setRegionsRanked] = useState([]);
@@ -168,9 +147,7 @@ const Leaderboard = ({ user }) => {
         if (alive) setLoading(false);
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [tab, contextQuery, context.cityId, context.stateId, context.level]);
 
   useEffect(() => {
@@ -188,14 +165,7 @@ const Leaderboard = ({ user }) => {
         label: 'Region',
         items: regions,
         current: context.regionId,
-        onPick: (rid) => {
-          setSearchParams({
-            scope: 'region',
-            regionId: rid,
-            cityId: context.cityId,
-            stateId: context.stateId,
-          });
-        },
+        onPick: (rid) => setSearchParams({ scope: 'region', regionId: rid, cityId: context.cityId, stateId: context.stateId }),
       };
     }
     if (context.level === 'city' && context.cityId) {
@@ -204,14 +174,7 @@ const Leaderboard = ({ user }) => {
         label: 'Region',
         items: regions,
         current: null,
-        onPick: (rid) => {
-          setSearchParams({
-            scope: 'region',
-            regionId: rid,
-            cityId: context.cityId,
-            stateId: context.stateId,
-          });
-        },
+        onPick: (rid) => setSearchParams({ scope: 'region', regionId: rid, cityId: context.cityId, stateId: context.stateId }),
       };
     }
     if (context.level === 'state' && context.stateId) {
@@ -220,13 +183,7 @@ const Leaderboard = ({ user }) => {
         label: 'City',
         items: cities,
         current: null,
-        onPick: (cid) => {
-          setSearchParams({
-            scope: 'city',
-            cityId: cid,
-            stateId: context.stateId,
-          });
-        },
+        onPick: (cid) => setSearchParams({ scope: 'city', cityId: cid, stateId: context.stateId }),
       };
     }
     return null;
@@ -242,37 +199,38 @@ const Leaderboard = ({ user }) => {
   const isLoading = loading && athletes.length === 0 && globalLeaders.length === 0 && regionsRanked.length === 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="pt-2 pb-28 space-y-4"
-    >
-      {/* Header */}
-      <div>
-        {breadcrumb && (
-          <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-            <MapPin className="w-3 h-3" />
-            <span>{breadcrumb}</span>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-28">
+
+      {/* GLASS CONTEXT BAR */}
+      <div className="glass-strong rounded-panel p-4 sm:p-5 shadow-premium">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl icon-tile-blue flex items-center justify-center shrink-0 shadow-md">
+            <Trophy className="w-5 h-5 text-white" />
           </div>
-        )}
-        <div className="flex items-center gap-2.5">
-          <Trophy className="w-6 h-6 text-[#2563EB] shrink-0" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-            {title}
-          </h1>
+          <div className="flex-1 min-w-0">
+            {breadcrumb && (
+              <div className="flex items-center gap-1 text-[11px] text-ink-500 mb-0.5">
+                <MapPin className="w-3 h-3" />
+                <span className="truncate">{breadcrumb}</span>
+              </div>
+            )}
+            <h1 className="text-xl sm:text-2xl font-bold text-ink-900 leading-tight truncate">
+              {title}
+            </h1>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      {/* TABS */}
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
         {tabs.map((t) => (
           <button
             key={t.k}
             onClick={() => setTab(t.k)}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               tab === t.k
-                ? 'bg-[#2563EB] text-white shadow-sm'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                ? 'bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-md shadow-[#2563EB]/25'
+                : 'bg-white text-ink-600 border border-surface-200 hover:bg-surface-50'
             }`}
           >
             {t.label}
@@ -280,10 +238,10 @@ const Leaderboard = ({ user }) => {
         ))}
       </div>
 
-      {/* Scope pills */}
+      {/* SCOPE PILLS */}
       {scopeSelector && scopeSelector.items.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <span className="text-xs text-gray-500 font-medium whitespace-nowrap shrink-0 uppercase tracking-wider">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <span className="text-[10px] font-bold text-ink-500 whitespace-nowrap shrink-0 uppercase tracking-widest">
             {scopeSelector.label}
           </span>
           {scopeSelector.items.map((item) => {
@@ -294,8 +252,8 @@ const Leaderboard = ({ user }) => {
                 onClick={() => scopeSelector.onPick(item.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                   isCurrent
-                    ? 'bg-[#2563EB] text-white shadow-sm'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                    ? 'bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-md shadow-[#2563EB]/25'
+                    : 'bg-white text-ink-600 border border-surface-200 hover:bg-surface-50'
                 }`}
               >
                 {item.name}
@@ -305,177 +263,221 @@ const Leaderboard = ({ user }) => {
         </div>
       )}
 
+      {/* ERROR */}
       {error && (
-        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
-          <EmptyState
-            icon={XCircle}
-            title="Couldn't load leaderboard"
-            message={error}
-          />
-        </div>
+        <MoveXCard>
+          <EmptyState icon={XCircle} title="Couldn't load leaderboard" message={error} />
+        </MoveXCard>
       )}
 
-      {/* ---- Top Athletes ---- */}
+      {/* ============================================================
+          TOP ATHLETES
+          ============================================================ */}
       {tab === 'athletes' && !error && (
         isLoading ? (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft p-4">
+          <MoveXCard variant="bento" padded={false} className="p-4 shadow-premium">
             <LoadingSkeleton variant="line" count={6} />
-          </div>
+          </MoveXCard>
         ) : athletes.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+          <MoveXCard>
             <EmptyState
               icon={Users}
               title="No athletes here yet"
               message="Be the first to log an activity in this area and claim the top spot."
             />
-          </div>
+          </MoveXCard>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft overflow-hidden">
-            <div className="overflow-x-auto">
+          <MoveXCard variant="bento" padded={false} className="overflow-hidden shadow-premium">
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-sm min-w-[520px]">
                 <thead>
                   <tr className="bg-[#2563EB] text-white">
-                    <th className="px-3 py-2.5 text-left font-semibold w-12 text-xs uppercase tracking-wider">#</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Name</th>
+                    <th className="px-3 py-3 text-left font-semibold w-12 text-[10px] uppercase tracking-wider">#</th>
+                    <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-wider">Name</th>
                     {showRegionColumn && (
-                      <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Region</th>
+                      <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-wider">Region</th>
                     )}
-                    <th className="px-3 py-2.5 text-center font-semibold w-16 text-xs uppercase tracking-wider">Lvl</th>
-                    <th className="px-3 py-2.5 text-right font-semibold w-24 text-xs uppercase tracking-wider">Energy</th>
-                    <th className="px-3 py-2.5 text-right font-semibold w-20 text-xs uppercase tracking-wider">XP</th>
+                    <th className="px-3 py-3 text-center font-semibold w-16 text-[10px] uppercase tracking-wider">Lvl</th>
+                    <th className="px-3 py-3 text-right font-semibold w-24 text-[10px] uppercase tracking-wider">Energy</th>
+                    <th className="px-3 py-3 text-right font-semibold w-20 text-[10px] uppercase tracking-wider">XP</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {athletes.map((u, i) => (
-                    <tr
-                      key={u._id}
-                      className={`border-t border-gray-100 transition-colors ${
-                        u._id === user?.id ? 'bg-[#2563EB]/5' : 'hover:bg-gray-50/60'
-                      }`}
-                    >
-                      <td className="px-3 py-2.5 text-gray-700 font-semibold tabular-nums">{i + 1}</td>
-                      <td className="px-3 py-2.5 text-gray-900 font-medium truncate max-w-[140px]">
-                        {u.name}
-                        {u._id === user?.id && (
-                          <span className="ml-2 text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">You</span>
+                  {athletes.map((u, i) => {
+                    const isMe = u._id === user?.id;
+                    const rankBg =
+                      i === 0 ? 'bg-gold-500/5' :
+                      i === 1 ? 'bg-surface-100/60' :
+                      i === 2 ? 'bg-ember-500/5' :
+                      '';
+                    return (
+                      <tr
+                        key={u._id}
+                        className={`border-t border-surface-200/60 transition-colors ${
+                          isMe ? 'bg-[#2563EB]/5' : rankBg || 'hover:bg-surface-50/80'
+                        }`}
+                      >
+                        <td className="px-3 py-3 text-ink-700 font-semibold tabular-nums">
+                          {i < 3 ? (
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${
+                              i === 0 ? 'bg-gradient-to-br from-gold-400 to-gold-600 text-white ring-2 ring-gold-300/50 shadow-md shadow-gold-500/30' :
+                              i === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white ring-2 ring-slate-300/50 shadow-md shadow-slate-500/20' :
+                              'bg-gradient-to-br from-ember-400 to-ember-600 text-white ring-2 ring-ember-300/50 shadow-md shadow-ember-500/30'
+                            }`}>{i + 1}</span>
+                          ) : (
+                            i + 1
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-ink-900 font-medium truncate max-w-[140px]">
+                          {u.name}
+                          {isMe && (
+                            <span className="ml-2 text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">You</span>
+                          )}
+                        </td>
+                        {showRegionColumn && (
+                          <td className="px-3 py-3 text-ink-500 text-xs truncate max-w-[120px]">{u.region}</td>
                         )}
-                      </td>
-                      {showRegionColumn && (
-                        <td className="px-3 py-2.5 text-gray-500 text-xs truncate max-w-[120px]">{u.region}</td>
-                      )}
-                      <td className="px-3 py-2.5 text-center text-gray-800 font-semibold tabular-nums">{u.level || 1}</td>
-                      <td className="px-3 py-2.5 text-right text-yellow-600 font-semibold tabular-nums">
-                        {(u.energy || 0).toLocaleString()}
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">{u.xp || 0}</td>
-                    </tr>
-                  ))}
+                        <td className="px-3 py-3 text-center text-ink-900 font-semibold tabular-nums">{u.level || 1}</td>
+                        <td className="px-3 py-3 text-right text-gold-600 font-semibold tabular-nums">
+                          {fmtNum(u.energy, 0, true)}
+                        </td>
+                        <td className="px-3 py-3 text-right text-ink-700 tabular-nums">{fmtNum(u.xp, 0)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          </div>
+          </MoveXCard>
         )
       )}
 
-      {/* ---- Regions Ranking ---- */}
+      {/* ============================================================
+          REGIONS RANKING
+          ============================================================ */}
       {tab === 'regions' && !error && (
         isLoading ? (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft p-4">
+          <MoveXCard variant="bento" padded={false} className="p-4 shadow-premium">
             <LoadingSkeleton variant="line" count={6} />
-          </div>
+          </MoveXCard>
         ) : regionsRanked.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+          <MoveXCard>
             <EmptyState
               icon={TrendingUp}
               title="No region data yet"
               message="Once athletes in this area start logging activities, regions will rank here."
             />
-          </div>
+          </MoveXCard>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft overflow-hidden">
-            <div className="overflow-x-auto">
+          <MoveXCard variant="bento" padded={false} className="overflow-hidden shadow-premium">
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-sm min-w-[460px]">
                 <thead>
                   <tr className="bg-[#2563EB] text-white">
-                    <th className="px-3 py-2.5 text-left font-semibold w-12 text-xs uppercase tracking-wider">#</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Region</th>
-                    <th className="px-3 py-2.5 text-center font-semibold w-16 text-xs uppercase tracking-wider">Lvl</th>
-                    <th className="px-3 py-2.5 text-right font-semibold w-28 text-xs uppercase tracking-wider">Energy</th>
+                    <th className="px-3 py-3 text-left font-semibold w-12 text-[10px] uppercase tracking-wider">#</th>
+                    <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-wider">Region</th>
+                    <th className="px-3 py-3 text-center font-semibold w-16 text-[10px] uppercase tracking-wider">Lvl</th>
+                    <th className="px-3 py-3 text-right font-semibold w-28 text-[10px] uppercase tracking-wider">Energy</th>
                   </tr>
                 </thead>
                 <tbody>
                   {regionsRanked.map((r, i) => (
-                    <tr key={r.region || r.city || r.id || i} className="border-t border-gray-100 hover:bg-gray-50/60 transition-colors">
-                      <td className="px-3 py-2.5 text-gray-700 font-semibold tabular-nums">{i + 1}</td>
-                      <td className="px-3 py-2.5 text-gray-900 font-medium truncate">{r.region || r.name}</td>
-                      <td className="px-3 py-2.5 text-center text-gray-800 tabular-nums">
+                    <tr key={r.region || r.city || r.id || i} className="border-t border-surface-200/60 hover:bg-surface-50/60 transition-colors">
+                      <td className="px-3 py-3 text-ink-700 font-semibold tabular-nums">
+                        {i < 3 ? (
+                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${
+                            i === 0 ? 'bg-gradient-to-br from-gold-400 to-gold-600 text-white ring-2 ring-gold-300/50 shadow-md shadow-gold-500/30' :
+                            i === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white ring-2 ring-slate-300/50 shadow-md shadow-slate-500/20' :
+                            'bg-gradient-to-br from-ember-400 to-ember-600 text-white ring-2 ring-ember-300/50 shadow-md shadow-ember-500/30'
+                          }`}>{i + 1}</span>
+                        ) : (
+                          i + 1
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-ink-900 font-medium truncate">{r.region || r.name}</td>
+                      <td className="px-3 py-3 text-center text-ink-900 tabular-nums">
                         {r.powerStationLevel || r.communityLevel || 1}
                       </td>
-                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">
-                        {(r.totalEnergy || 0).toLocaleString()}
+                      <td className="px-3 py-3 text-right text-ink-700 tabular-nums">
+                        {fmtNum(r.totalEnergy, 0, true)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          </MoveXCard>
         )
       )}
 
-      {/* ---- Global ---- */}
+      {/* ============================================================
+          GLOBAL
+          ============================================================ */}
       {tab === 'global' && !error && (
         isLoading ? (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft p-4">
+          <MoveXCard variant="bento" padded={false} className="p-4 shadow-premium">
             <LoadingSkeleton variant="line" count={6} />
-          </div>
+          </MoveXCard>
         ) : globalLeaders.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+          <MoveXCard>
             <EmptyState
               icon={Globe2}
               title="No global data yet"
               message="Global rankings will appear once athletes start logging activities."
             />
-          </div>
+          </MoveXCard>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft overflow-hidden">
-            <div className="overflow-x-auto">
+          <MoveXCard variant="bento" padded={false} className="overflow-hidden shadow-premium">
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-sm min-w-[520px]">
                 <thead>
                   <tr className="bg-[#2563EB] text-white">
-                    <th className="px-3 py-2.5 text-left font-semibold w-12 text-xs uppercase tracking-wider">#</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Name</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider">Region</th>
-                    <th className="px-3 py-2.5 text-center font-semibold w-16 text-xs uppercase tracking-wider">Lvl</th>
-                    <th className="px-3 py-2.5 text-right font-semibold w-24 text-xs uppercase tracking-wider">km</th>
-                    <th className="px-3 py-2.5 text-right font-semibold w-20 text-xs uppercase tracking-wider">XP</th>
+                    <th className="px-3 py-3 text-left font-semibold w-12 text-[10px] uppercase tracking-wider">#</th>
+                    <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-wider">Name</th>
+                    <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-wider">Region</th>
+                    <th className="px-3 py-3 text-center font-semibold w-16 text-[10px] uppercase tracking-wider">Lvl</th>
+                    <th className="px-3 py-3 text-right font-semibold w-24 text-[10px] uppercase tracking-wider">km</th>
+                    <th className="px-3 py-3 text-right font-semibold w-20 text-[10px] uppercase tracking-wider">XP</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {globalLeaders.map((u, i) => (
-                    <tr
-                      key={u._id}
-                      className={`border-t border-gray-100 transition-colors ${
-                        u._id === user?.id ? 'bg-[#2563EB]/5' : 'hover:bg-gray-50/60'
-                      }`}
-                    >
-                      <td className="px-3 py-2.5 text-gray-700 font-semibold tabular-nums">{i + 1}</td>
-                      <td className="px-3 py-2.5 text-gray-900 font-medium truncate max-w-[140px]">
-                        {u.name}
-                        {u._id === user?.id && (
-                          <span className="ml-2 text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">You</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-gray-500 text-xs truncate max-w-[120px]">{u.region}</td>
-                      <td className="px-3 py-2.5 text-center text-gray-800 font-semibold tabular-nums">{u.level || 1}</td>
-                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">{u.totalDistance || 0}</td>
-                      <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">{u.xp || 0}</td>
-                    </tr>
-                  ))}
+                  {globalLeaders.map((u, i) => {
+                    const isMe = u._id === user?.id;
+                    return (
+                      <tr
+                        key={u._id}
+                        className={`border-t border-surface-200/60 transition-colors ${
+                          isMe ? 'bg-[#2563EB]/5' : 'hover:bg-surface-50/80'
+                        }`}
+                      >
+                        <td className="px-3 py-3 text-ink-700 font-semibold tabular-nums">
+                          {i < 3 ? (
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${
+                              i === 0 ? 'bg-gradient-to-br from-gold-400 to-gold-600 text-white ring-2 ring-gold-300/50 shadow-md shadow-gold-500/30' :
+                              i === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white ring-2 ring-slate-300/50 shadow-md shadow-slate-500/20' :
+                              'bg-gradient-to-br from-ember-400 to-ember-600 text-white ring-2 ring-ember-300/50 shadow-md shadow-ember-500/30'
+                            }`}>{i + 1}</span>
+                          ) : (
+                            i + 1
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-ink-900 font-medium truncate max-w-[140px]">
+                          {u.name}
+                          {isMe && (
+                            <span className="ml-2 text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">You</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-ink-500 text-xs truncate max-w-[120px]">{u.region}</td>
+                        <td className="px-3 py-3 text-center text-ink-900 font-semibold tabular-nums">{u.level || 1}</td>
+                        <td className="px-3 py-3 text-right text-ink-700 tabular-nums">{fmtNum(u.totalDistance, 2)}</td>
+                        <td className="px-3 py-3 text-right text-ink-700 tabular-nums">{fmtNum(u.xp, 0)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          </div>
+          </MoveXCard>
         )
       )}
     </motion.div>

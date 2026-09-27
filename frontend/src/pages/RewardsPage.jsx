@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import API from '../api';
 import { motion } from 'framer-motion';
-import { Sparkles, Gift } from 'lucide-react';
+import { Sparkles, Gift, ArrowRight } from 'lucide-react';
 import { useTrophy } from '../context/TrophyContext';
 
 import TrophyBalanceHeader from '../components/rewards/TrophyBalanceHeader';
@@ -13,6 +13,7 @@ import MyRewardsList from '../components/rewards/MyRewardsList';
 import RedemptionHistory from '../components/rewards/RedemptionHistory';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import EmptyState from '../components/ui/EmptyState';
+import MoveXCard from '../components/ui/MoveXCard';
 
 const CATEGORY_MAP = {
   all: 'All',
@@ -96,17 +97,24 @@ const RewardsPage = () => {
   const displayBalance = balanceLoading ? null : balance ?? 0;
 
   return (
-    <div className="max-w-6xl mx-auto pt-2 pb-28 space-y-5">
-      <div>
-        <div className="flex items-center gap-2">
-          <Sparkles className="text-[#2563EB]" size={24} />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            MoveX Bazaar &amp; Rewards
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-4 sm:space-y-5 pb-28"
+    >
+      {/* SPATIAL HERO */}
+      <div className="relative hero-premium text-white rounded-hero p-5 sm:p-6 md:p-7 shadow-hero">
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-10 w-40 h-40 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+        <div className="relative">
+
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight mb-1.5">
+            Rewards &amp; Partner Perks
           </h1>
+          <p className="text-sm md:text-base text-white/85 max-w-lg">
+            Redeem your verified MoveX Trophies for cosmetics, boosts, and experiences.
+          </p>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
-          Redeem your verified MoveX Trophies
-        </p>
       </div>
 
       <TrophyBalanceHeader balance={displayBalance} loading={balanceLoading} />
@@ -115,7 +123,8 @@ const RewardsPage = () => {
         <NextRewardProgress balance={displayBalance} rewards={catalog} />
       )}
 
-      <div className="flex gap-2 border-b border-gray-200 overflow-x-auto -mx-4 px-4">
+      {/* TABS */}
+      <div className="flex gap-1 border-b border-surface-200 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar">
         {[
           { k: 'catalog', label: 'Catalog' },
           { k: 'mine', label: 'My Rewards' },
@@ -127,7 +136,7 @@ const RewardsPage = () => {
             className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition whitespace-nowrap ${
               tab === t.k
                 ? 'border-[#2563EB] text-[#2563EB]'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-ink-500 hover:text-ink-900 hover:border-surface-300'
             }`}
           >
             {t.label}
@@ -135,6 +144,7 @@ const RewardsPage = () => {
         ))}
       </div>
 
+      {/* CATALOG */}
       {tab === 'catalog' && (
         <>
           <RewardFilters
@@ -148,22 +158,24 @@ const RewardsPage = () => {
           {catalogLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
-                <LoadingSkeleton key={i} variant="card" />
+                <MoveXCard key={i} variant="bento" padded={false} className="p-4 shadow-premium">
+                  <LoadingSkeleton variant="card" />
+                </MoveXCard>
               ))}
             </div>
           ) : visible.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200/80 shadow-soft">
+            <MoveXCard className="shadow-premium">
               <EmptyState
                 icon={Gift}
                 title="No rewards match this filter"
                 message="Try a different category or check back soon — new rewards drop weekly."
               />
-            </div>
+            </MoveXCard>
           ) : (
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
+              transition={{ duration: 0.3 }}
               className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4"
             >
               {visible.map((r) => (
@@ -193,7 +205,7 @@ const RewardsPage = () => {
           onContinue={() => setSuccess(null)}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
 

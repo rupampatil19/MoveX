@@ -8,7 +8,7 @@ const TopHeader = ({ user, pro }) => {
   const { balance, loading: trophyLoading } = useTrophy();
 
   return (
-    <header className="sticky top-1 z-40 mx-3 md:mx-3 glass-strong rounded-2xl px-4 py-3 md:px-6 md:py-4 shadow-lg shadow-[#2563EB]/5">
+    <header className="sticky top-1 z-40 mx-3 md:mx-3 glass-strong rounded-2xl px-4 py-3 md:px-6 md:py-4 shadow-lg shadow-[#2563EB]/5 safe-top">
       {/* Mobile compact header */}
       <div className="flex md:hidden items-center justify-between">
         <div className="flex items-center gap-2">
