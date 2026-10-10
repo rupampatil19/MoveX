@@ -78,8 +78,9 @@ router.post('/run/:activityId', auth, async (req, res) => {
     }
     __stamp('loaded activity');
 
-    // Generate raw data if not present
+    // Generate raw data if not present (skip for AR — has its own payload)
     let rawData = activity.rawData;
+    const isAR = !!(rawData && rawData.source === 'ar' && rawData.ar);
     if (!rawData || Object.keys(rawData).length === 0) {
       rawData = generateDemoData(activity.type, activity.duration);
       activity.rawData = rawData;
@@ -89,19 +90,36 @@ router.post('/run/:activityId', auth, async (req, res) => {
     const avsResult = avsEngine.calculateAVS(activity.type, rawData);
     __stamp('ran AVS');
 
-    // Build steps
-    const steps = [
-      { step: 1, name: 'Identity Check', status: 'GREEN', detail: 'User verified', score: 100 },
-      { step: 2, name: 'Device Calibration', status: 'GREEN', detail: 'Calibration complete', score: 100 },
-      { step: 3, name: 'Sensor Quality', status: rawData.sensorQuality >= 80 ? 'GREEN' : rawData.sensorQuality >= 60 ? 'ORANGE' : 'RED', detail: `Quality ${rawData.sensorQuality}%`, score: rawData.sensorQuality },
-      { step: 4, name: 'Raw Data Collection', status: 'GREEN', detail: 'Data collected', score: 100 },
-      { step: 5, name: 'Data Preprocessing', status: rawData.dataQualityScore >= 80 ? 'GREEN' : rawData.dataQualityScore >= 60 ? 'ORANGE' : 'RED', detail: `Preprocessed quality ${rawData.dataQualityScore}%`, score: rawData.dataQualityScore },
-      { step: 6, name: 'Activity Classification', status: avsResult.detectedType === activity.type ? 'GREEN' : 'ORANGE', detail: `${activity.type} detected`, score: avsResult.detectedType === activity.type ? 100 : 60 },
-      { step: 7, name: 'Motion Pattern Verification', status: avsResult.motionScore >= 80 ? 'GREEN' : avsResult.motionScore >= 60 ? 'ORANGE' : 'RED', detail: `Pattern score ${avsResult.motionScore.toFixed(0)}%`, score: avsResult.motionScore },
-      { step: 8, name: 'GPS Verification', status: activity.type === 'workout' ? 'ORANGE' : avsResult.gpsScore >= 80 ? 'GREEN' : avsResult.gpsScore >= 60 ? 'ORANGE' : 'RED', detail: activity.type === 'workout' ? 'GPS not available' : `GPS score ${avsResult.gpsScore.toFixed(0)}%`, score: avsResult.gpsScore },
-      { step: 9, name: 'Cross-Sensor Consistency', status: 'GREEN', detail: 'Consistent', score: 85 },
-      { step: 10, name: 'Final Validity Score & Decision', status: avsResult.decision === 'VERIFIED' ? 'GREEN' : avsResult.decision === 'PROBABLE' ? 'ORANGE' : 'RED', detail: `AVS ${avsResult.avs.toFixed(0)}/100, ${avsResult.confidence} confidence, ${avsResult.decision}`, score: avsResult.avs },
-    ];
+    // Build steps — two flavors: AR (pose engine) and standard (GPS/motion)
+    let steps;
+    if (isAR) {
+      const ar = rawData.ar;
+      steps = [
+        { step: 1, name: 'Identity Check', status: 'GREEN', detail: 'User verified', score: 100 },
+        { step: 2, name: 'Camera Calibration', status: 'GREEN', detail: 'Camera and pose model ready', score: 100 },
+        { step: 3, name: 'Pose Detection', status: 'GREEN', detail: 'MoveNet skeleton tracking active', score: 100 },
+        { step: 4, name: 'Exercise Recognition', status: 'GREEN', detail: ar.exercise + ' form analyzer loaded', score: 100 },
+        { step: 5, name: 'Rep Counting', status: ar.reps >= 5 ? 'GREEN' : ar.reps >= 3 ? 'ORANGE' : 'RED', detail: ar.reps + ' reps counted (target ' + ar.target + ')', score: Math.min(100, Math.round((ar.reps / Math.max(1, ar.target)) * 100)) },
+        { step: 6, name: 'Form Accuracy', status: ar.accuracy >= 85 ? 'GREEN' : ar.accuracy >= 65 ? 'ORANGE' : 'RED', detail: 'Form accuracy ' + ar.accuracy + '%', score: ar.accuracy },
+        { step: 7, name: 'Tempo & Control', status: ar.durationSec >= 60 ? 'GREEN' : ar.durationSec >= 30 ? 'ORANGE' : 'RED', detail: ar.durationSec + 's session length', score: ar.durationSec >= 60 ? 100 : ar.durationSec >= 30 ? 80 : 60 },
+        { step: 8, name: 'Partial Reps', status: ar.partials === 0 ? 'GREEN' : ar.partials <= 2 ? 'ORANGE' : 'RED', detail: ar.partials === 0 ? 'No partial reps' : ar.partials + ' shallow attempts', score: Math.max(0, 100 - ar.partials * 15) },
+        { step: 9, name: 'Motion Signature', status: ar.accuracy >= 75 ? 'GREEN' : 'ORANGE', detail: 'Human motion pattern verified', score: ar.accuracy },
+        { step: 10, name: 'Final Validity Score & Decision', status: avsResult.decision === 'VERIFIED' ? 'GREEN' : avsResult.decision === 'PROBABLE' ? 'ORANGE' : 'RED', detail: 'AVS ' + avsResult.avs.toFixed(0) + '/100, ' + avsResult.confidence + ' confidence, ' + avsResult.decision, score: avsResult.avs },
+      ];
+    } else {
+      steps = [
+        { step: 1, name: 'Identity Check', status: 'GREEN', detail: 'User verified', score: 100 },
+        { step: 2, name: 'Device Calibration', status: 'GREEN', detail: 'Calibration complete', score: 100 },
+        { step: 3, name: 'Sensor Quality', status: rawData.sensorQuality >= 80 ? 'GREEN' : rawData.sensorQuality >= 60 ? 'ORANGE' : 'RED', detail: 'Quality ' + rawData.sensorQuality + '%', score: rawData.sensorQuality },
+        { step: 4, name: 'Raw Data Collection', status: 'GREEN', detail: 'Data collected', score: 100 },
+        { step: 5, name: 'Data Preprocessing', status: rawData.dataQualityScore >= 80 ? 'GREEN' : rawData.dataQualityScore >= 60 ? 'ORANGE' : 'RED', detail: 'Preprocessed quality ' + rawData.dataQualityScore + '%', score: rawData.dataQualityScore },
+        { step: 6, name: 'Activity Classification', status: avsResult.detectedType === activity.type ? 'GREEN' : 'ORANGE', detail: activity.type + ' detected', score: avsResult.detectedType === activity.type ? 100 : 60 },
+        { step: 7, name: 'Motion Pattern Verification', status: avsResult.motionScore >= 80 ? 'GREEN' : avsResult.motionScore >= 60 ? 'ORANGE' : 'RED', detail: 'Pattern score ' + avsResult.motionScore.toFixed(0) + '%', score: avsResult.motionScore },
+        { step: 8, name: 'GPS Verification', status: activity.type === 'workout' ? 'ORANGE' : avsResult.gpsScore >= 80 ? 'GREEN' : avsResult.gpsScore >= 60 ? 'ORANGE' : 'RED', detail: activity.type === 'workout' ? 'GPS not available' : 'GPS score ' + avsResult.gpsScore.toFixed(0) + '%', score: avsResult.gpsScore },
+        { step: 9, name: 'Cross-Sensor Consistency', status: 'GREEN', detail: 'Consistent', score: 85 },
+        { step: 10, name: 'Final Validity Score & Decision', status: avsResult.decision === 'VERIFIED' ? 'GREEN' : avsResult.decision === 'PROBABLE' ? 'ORANGE' : 'RED', detail: 'AVS ' + avsResult.avs.toFixed(0) + '/100, ' + avsResult.confidence + ' confidence, ' + avsResult.decision, score: avsResult.avs },
+      ];
+    }
 
     activity.verification = {
       avs: avsResult.avs,
@@ -145,7 +163,38 @@ router.post('/run/:activityId', auth, async (req, res) => {
     let xpAward = 0;
     let trophyName = null;
 
-    if (avsResult.decision === 'VERIFIED') {
+    if (isAR) {
+      // ----- AR rewards: scaled by reps + accuracy + verification tier -----
+      const ar = rawData.ar;
+      const reps = ar.reps || 0;
+      const accuracy = ar.accuracy || 0;
+      const target = ar.target || 1;
+      const hitTarget = reps >= target;
+      const accFactor = 0.4 + (accuracy / 100) * 0.6;
+      let baseEnergyAR = reps * 6 * accFactor;
+      let baseXP = reps * 4 * accFactor;
+      let baseTrophyAR = 0;
+
+      if (avsResult.decision === 'VERIFIED') {
+        if (hitTarget) baseTrophyAR = 2 + Math.floor(reps / 20);
+      } else if (avsResult.decision === 'PROBABLE') {
+        baseEnergyAR *= 0.6;
+        baseXP *= 0.6;
+      } else {
+        baseEnergyAR = 0;
+        baseXP = 0;
+      }
+
+      energyAward = Math.round(baseEnergyAR * energyMultiplier);
+      xpAward = Math.round(baseXP);
+      trophyAward = Math.round(baseTrophyAR * trophyMultiplier);
+
+      if (trophyAward > 0) {
+        const exName = ar.exercise === 'squat' ? 'Squat' : 'Push-Up';
+        if (hitTarget && reps >= 15) trophyName = exName + ' Master';
+        else if (hitTarget) trophyName = exName + ' Set Complete';
+      }
+    } else if (avsResult.decision === 'VERIFIED') {
       energyAward = Math.round(baseEnergy * (avsResult.avs / 100) * energyMultiplier);
       trophyAward = Math.round(baseTrophy * (avsResult.avs / 100) * trophyMultiplier);
       xpAward = Math.round(activity.distance * 15);

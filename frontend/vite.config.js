@@ -1,12 +1,23 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite';
+import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Shim the UMD-only MediaPipe bundle that TensorFlow's pose-detection
+      // package imports at build time. We only use MoveNet, so this is safe.
+      '@mediapipe/pose': fileURLToPath(new URL('./src/lib/ar/mediapipe-stub.js', import.meta.url)),
+    },
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+      },
       manifest: {
         name: 'MoveX',
         short_name: 'MoveX',

@@ -2,6 +2,7 @@ import { Zap, Trophy, Flame, Bell, ChevronDown } from 'lucide-react';
 import { useTrophy } from '../../context/TrophyContext';
 import Logo from '../Logo';
 import NotificationBell from '../NotificationBell';
+import StrikeIndicator from '../penalties/StrikeIndicator';
 
 const TopHeader = ({ user, pro }) => {
   const flowLabel = user?.accountType === 'PRO' ? 'Pro Athlete' : 'Beginner';
@@ -18,6 +19,7 @@ const TopHeader = ({ user, pro }) => {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <StrikeIndicator compact />
           <NotificationBell />
           <div className="text-sm text-gray-700">{user.name.split(' ')[0]}</div>
         </div>
@@ -48,6 +50,7 @@ const TopHeader = ({ user, pro }) => {
             <Flame className="w-4 h-4" />
             <span className="font-semibold text-gray-700 text-sm">{user.streak || 0} Day</span>
           </div>
+          <StrikeIndicator compact />
           <NotificationBell />
           <div className="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl hover:bg-white/60 text-gray-700 transition-colors">
             <span className="text-sm">{user.region || 'Maharashtra'}</span>

@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const Activity = require('../models/Activity');
 const User = require('../models/User');
+const winBackService = require('../services/winBackService');
 
 const router = express.Router();
 
@@ -44,6 +45,9 @@ router.post('/', auth, async (req, res) => {
     });
 
     await activity.save();
+
+      // MoveX Penalty System: update rewards gate progress
+      try { await winBackService.updateGateProgress(req.userId); } catch (e) { console.error('gate progress:', e.message); }
     res.status(201).json({ activity });
   } catch (err) {
     console.error('Activity save error:', err);

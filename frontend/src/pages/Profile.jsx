@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import API from '../api';
 import { motion } from 'framer-motion';
 import {
   Mail, MapPin, Zap, Trophy, Flame, Activity,
-  Route, Clock, Pencil, TrendingUp, Medal, Star, LogOut, ArrowRight
+  Route, Clock, Pencil, TrendingUp, Medal, Star,
+  LogOut, ArrowRight, ShieldCheck, Snowflake,
 } from 'lucide-react';
 import MoveXCard from '../components/ui/MoveXCard';
 import MoveXGlassPanel from '../components/ui/MoveXGlassPanel';
@@ -13,12 +14,15 @@ import EmptyState from '../components/ui/EmptyState';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import Button from '../components/ui/Button';
 import { useTrophy } from '../context/TrophyContext';
+import { getPenaltyState } from '../services/penaltyApi';
+import StrikeIndicator from '../components/penalties/StrikeIndicator';
 
 const Profile = ({ user, logout }) => {
   const [currentUser, setCurrentUser] = useState(user);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const { balance: trophyBalance, loading: trophyLoading } = useTrophy();
+  const [freezeState, setFreezeState] = useState({ available: 0, max: 3 });
 
   useEffect(() => {
     (async () => {
@@ -35,6 +39,12 @@ const Profile = ({ user, logout }) => {
         setLoading(false);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    getPenaltyState().then((s) => {
+      if (s && s.freeze) setFreezeState(s.freeze);
+    }).catch(() => {});
   }, []);
 
   const handleLogout = () => {
@@ -249,7 +259,56 @@ const Profile = ({ user, logout }) => {
         </div>
       </div>
 
-      {/* ============ ACHIEVEMENTS + RECENT ============ */}
+            {/* FREEZE STATUS */}
+      {freezeState.max > 0 && (
+        <Link to="/penalties" className="block">
+          <MoveXCard variant="premium" padded={false} className="p-4 hover:shadow-premium-lg transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center shrink-0">
+                <Snowflake className="w-5 h-5 text-sky-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-ink-900">Streak Freezes</p>
+                <p className="text-xs text-ink-500">
+                  {freezeState.available} of {freezeState.max} available
+                </p>
+              </div>
+              <div className="flex items-center gap-0.5 shrink-0">
+                {Array.from({ length: freezeState.max }).map((_, i) => (
+                  <Snowflake
+                    key={i}
+                    className={'w-4 h-4 ' + (i < freezeState.available ? 'text-sky-500' : 'text-ink-300')}
+                  />
+                ))}
+              </div>
+            </div>
+          </MoveXCard>
+        </Link>
+      )}
+
+{/* ============ ACHIEVEMENTS + RECENT ============ */}
+
+      {/* YOUR STANDING */}
+      <div>
+        <Link to="/penalties" className="block">
+          <MoveXCard variant="premium" className="hover:shadow-premium-lg transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl icon-tile-soft-blue flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-5 h-5 text-[#2563EB]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-ink-900">Your Standing</p>
+                <p className="text-xs text-ink-500">Strikes, freezes, and fair play history</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-ink-400 shrink-0" />
+            </div>
+            <div className="mt-3">
+              <StrikeIndicator />
+            </div>
+          </MoveXCard>
+        </Link>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <SectionHeader title="Achievements" icon={Medal} />
