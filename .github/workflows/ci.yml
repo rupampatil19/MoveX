@@ -13,6 +13,15 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      NODE_ENV: development
+      MONGO_URI: mongodb://localhost:27017/movex_ci
+      JWT_SECRET: ci_test_secret
+      GEMINI_API_KEY: ci_dummy
+      GEMINI_MODEL: gemini-3.5-flash-lite
+      TINYFISH_API_KEY: ci_dummy
+      BACKEND_URL: http://localhost:5000
+      CORS_ORIGIN: http://localhost:5173
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
