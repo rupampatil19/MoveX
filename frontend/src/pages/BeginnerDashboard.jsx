@@ -11,6 +11,8 @@ import MoveXCard from '../components/ui/MoveXCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { useTrophy } from '../context/TrophyContext';
+import FriendlyNudge from '../components/penalties/FriendlyNudge';
+import WinBackBanner from '../components/penalties/WinBackBanner';
 
 const BeginnerDashboard = ({ user }) => {
   const [activities, setActivities] = useState([]);
@@ -171,6 +173,9 @@ const BeginnerDashboard = ({ user }) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-5">
+      <WinBackBanner />
+      <FriendlyNudge />
+
 
       {/* ============ PREMIUM HERO ============ */}
       <div className="relative hero-premium text-white rounded-hero p-5 sm:p-6 md:p-7">

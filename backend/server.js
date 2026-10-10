@@ -8,6 +8,9 @@ dns.setServers(['1.1.1.1', '8.8.8.8']);
 // IMPORTS
 // ============================================================
 const express = require('express');
+const gearRoutes = require('./routes/gear');
+const dynamicQuestRoutes = require('./routes/dynamicQuests');
+const { startDynamicQuestCron } = require('./services/dynamicQuestCron');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -62,9 +65,14 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // ============================================================
 // RATE LIMITERS
 // ============================================================
+// Skip rate limiters in development so hot-reload doesn't hit the cap
+const IS_DEV = process.env.NODE_ENV !== 'production';
+const skipLimiter = () => IS_DEV;
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
+  skip: skipLimiter,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
@@ -74,6 +82,7 @@ app.use(globalLimiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
+  skip: skipLimiter,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts, please try again later.' },
@@ -82,6 +91,7 @@ const authLimiter = rateLimit({
 const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
+  skip: skipLimiter,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many AI Coach requests, please slow down.' },
@@ -90,6 +100,7 @@ const aiLimiter = rateLimit({
 const verificationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,
+  skip: skipLimiter,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many verification requests.' },
@@ -126,6 +137,7 @@ io.on('connection', (socket) => {
 // ============================================================
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
+  .then(() => startDynamicQuestCron())
   .catch(err => console.log('MongoDB connection error:', err));
 
 // ============================================================
@@ -138,6 +150,8 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 // ============================================================
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/gear', gearRoutes);
+app.use('/api/dynamic-quests', dynamicQuestRoutes);
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/activity', require('./routes/activity'));
 app.use('/api/verification', verificationLimiter, require('./routes/verification'));
@@ -152,12 +166,31 @@ app.use('/api/movex-system', require('./routes/movexSystem'));
 app.use('/api/quests', require('./routes/quests'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/penalties', require('./routes/penalties'));
 
 app.get('/', (req, res) => res.send('MoveX API is running'));
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
+// ============================================================
+// INTERNAL CRON TRIGGER (protected by CRON_SECRET env var)
+// ============================================================
+app.post('/internal/cron/daily', async (req, res) => {
+  const secret = req.header('x-cron-secret');
+  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    const cron = require('./services/cron');
+    const result = await cron.runDailyCron();
+    res.json(result);
+  } catch (err) {
+    console.error('Cron trigger error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err.message);
 

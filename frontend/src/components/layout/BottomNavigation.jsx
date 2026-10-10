@@ -3,10 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Map, PlusCircle, Users, User, Menu, X,
   BarChart3, ScrollText, Activity, Globe2, Trophy, Award,
-  Medal, Bot, Store, CalendarDays, Settings, LogOut, Camera
+  Medal, Store, CalendarDays, Settings, LogOut
 } from 'lucide-react';
 
-const primaryItems = [
+const beginnerPrimaryItems = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/map', icon: Map, label: 'Map' },
   { to: '/start', icon: PlusCircle, label: 'Start', center: true },
@@ -14,10 +14,20 @@ const primaryItems = [
   { to: '/profile', icon: User, label: 'Profile' },
 ];
 
+// Pro athletes: competitive tabs replace Map + Clan.
+const proPrimaryItems = [
+  { to: '/', icon: Home, label: 'Home' },
+  { to: '/leaderboard', icon: Trophy, label: 'Ranks' },
+  { to: '/start', icon: PlusCircle, label: 'Start', center: true },
+  { to: '/quests', icon: ScrollText, label: 'Quests' },
+  { to: '/profile', icon: User, label: 'Profile' },
+];
+
 const BottomNavigation = ({ user, logout }) => {
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const isPro = user?.accountType === 'PRO';
+  const primaryItems = isPro ? proPrimaryItems : beginnerPrimaryItems;
 
   const commonMoreItems = [
     { to: '/analytics', icon: BarChart3, label: 'Analytics' },
@@ -25,8 +35,6 @@ const BottomNavigation = ({ user, logout }) => {
     { to: '/activity', icon: Activity, label: 'Activity' },
     { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
     { to: '/rewards', icon: Award, label: 'Rewards' },
-    { to: '/ai-coach', icon: Bot, label: 'AI Coach' },
-    { to: '/ar', icon: Camera, label: 'AR' },
     { to: '/events', icon: CalendarDays, label: 'Events' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];
@@ -37,7 +45,11 @@ const BottomNavigation = ({ user, logout }) => {
     { to: '/store', icon: Store, label: 'Store' },
   ];
 
-  const moreItems = isPro ? [...commonMoreItems, ...proOnlyItems] : commonMoreItems;
+  // Pro athletes already have Leaderboard + Quests as primary tabs,
+  // so filter them out of the More menu to avoid duplication.
+  const moreItems = isPro
+    ? [...commonMoreItems.filter((i) => i.to !== '/leaderboard' && i.to !== '/quests'), ...proOnlyItems]
+    : commonMoreItems;
 
   const handleLogout = () => {
     if (window.confirm('Logout?\n\nAre you sure you want to logout from this account?')) {
@@ -49,7 +61,7 @@ const BottomNavigation = ({ user, logout }) => {
   return (
     <>
       {/* Floating pill nav */}
-      <nav className="md:hidden fixed bottom-nav-safe left-3 right-3 glass-strong rounded-2xl border border-white/50 z-40 flex justify-around items-center px-2 py-2 shadow-2xl shadow-[#2563EB]/15">
+      <nav className="md:hidden fixed bottom-nav-safe left-3 right-3 glass-strong rounded-2xl border border-white/50 z-[9000] flex justify-around items-center px-2 py-2 shadow-2xl shadow-[#2563EB]/15">
         {primaryItems.map((item) => {
           const isActive = location.pathname === item.to;
           const Icon = item.icon;
@@ -90,10 +102,10 @@ const BottomNavigation = ({ user, logout }) => {
       {isMoreOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-md z-[90] md:hidden"
+            className="fixed inset-0 bg-black/40 backdrop-blur-md z-[9990] md:hidden"
             onClick={() => setIsMoreOpen(false)}
           />
-          <div className="fixed bottom-3 left-3 right-3 glass-strong rounded-3xl border border-white/50 z-[100] md:hidden max-h-[80vh] flex flex-col shadow-2xl shadow-[#2563EB]/15">
+          <div className="fixed bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xl rounded-3xl border border-white/50 z-[9999] md:hidden max-h-[80vh] flex flex-col shadow-2xl shadow-[#2563EB]/15">
             <div className="flex items-center justify-between p-4 border-b border-white/50">
               <h2 className="text-lg font-semibold text-gray-800">More</h2>
               <button

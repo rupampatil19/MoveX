@@ -2,7 +2,7 @@
 
 > **Trigger word:** `MoveX`
 > **Repo:** https://github.com/rupampatil19/MoveX
-> **Last updated:** 2026-09-27
+> **Last updated:** 2026-10-09
 > **Purpose:** Paste this file at the start of a new chat to restore full project context.
 
 ---
@@ -11,25 +11,15 @@
 
 MoveX is a **fitness + gamified geographic living world** app for India.
 
-**Tagline (sidebar under logo):** *Move More. Evolve Together.*
-**Tagline (marketing / dashboard hero):** *Move, Compete and Grow Together.*
+**Taglines:**
+- Sidebar: *Move More. Evolve Together.*
+- Marketing: *Move, Compete and Grow Together.*
 
-**Core loop:**
-Athlete → Region → City → State → India
-↓
-Activity verified → Energy earned
-↓
-Regional/City/State Hub levels up
-↓
-Hubs evolve across the map
-↓
-Leaderboards, Trophies, Rewards
+**Core loop:** Athlete → Region → City → State → India → Energy earned → Hub levels up → Leaderboards, Trophies, Rewards
 
-**Two ecosystems via `accountType`:**
-- **BEGINNER** — personal fitness journey
-- **PRO** — community & competition
+**Two ecosystems via `accountType`:** **BEGINNER** (personal) / **PRO** (community & competition)
 
-⚠️ **The User model field is `accountType`, NOT `athleteMode`.** All models and endpoints filter by `accountType`.
+⚠️ **User model field is `accountType`, NOT `athleteMode`.**
 
 ---
 
@@ -37,12 +27,12 @@ Leaderboards, Trophies, Rewards
 
 | Layer | Tech |
 |---|---|
-| Frontend | React 18, Vite 8, Tailwind v3, Framer Motion, Leaflet, lucide-react, axios, canvas-confetti, html-to-image, react-markdown, recharts, jspdf |
+| Frontend | React 19, Vite 8, Tailwind v3, Framer Motion, Leaflet, lucide-react, axios, canvas-confetti, html-to-image, react-markdown, recharts, jspdf |
+| AR / Pose | TensorFlow MoveNet (`@tensorflow-models/pose-detection`, `@tensorflow/tfjs-core`, `@tensorflow/tfjs-backend-webgl`) |
+| Sensors | Web Bluetooth (Athlonia band), Geolocation (GPS), Accelerometer/Gyroscope/Magnetometer APIs |
 | Backend | Node.js, Express, MongoDB (Mongoose), JWT (`x-auth-token`), Socket.IO, helmet, express-rate-limit |
-| Database | MongoDB Atlas |
-| Auth | JWT. Token + user in `localStorage` as `movex_token` and `movex_user` |
-| AI | Google Gemini via `@google/genai`. Model: `gemini-3.5-flash-lite` |
-| Styling | Tailwind + custom glass + clean-surface utilities. Primary: **#2563EB** |
+| AI Coach | Google Gemini via `@google/genai`. Model: `gemini-3.5-flash-lite` |
+| Styling | Tailwind + glass utilities. Primary: **#2563EB** |
 
 ---
 
@@ -54,313 +44,426 @@ Leaderboards, Trophies, Rewards
 | Backend | Render Web Service | https://movex-zkgd.onrender.com |
 | Database | MongoDB Atlas | (cloud cluster) |
 
-### Critical Deployment Config
-
 **Backend `server.js` — DNS workaround (MUST be very first line):**
 ```javascript
 const dns = require('dns');
 dns.setServers(['1.1.1.1', '8.8.8.8']);
-Backend env vars (Render):
+Backend env vars: MONGO_URI, JWT_SECRET, GEMINI_API_KEY, GEMINI_MODEL=gemini-3.5-flash-lite, CORS_ORIGIN=https://movex-1.onrender.com, CRON_SECRET
 
-MONGO_URI
+Frontend env vars: VITE_API_URL=https://movex-zkgd.onrender.com/api (⚠️ must include /api)
 
-JWT_SECRET
+Frontend Render rewrite rule: /* → /index.html → Rewrite
 
-GEMINI_API_KEY
-
-GEMINI_MODEL = gemini-3.5-flash-lite
-
-CORS_ORIGIN = https://movex-1.onrender.com
-
-PORT = 10000 (Render sets automatically)
-
-Frontend env vars (Render):
-
-VITE_API_URL = https://movex-zkgd.onrender.com/api (⚠️ must include /api)
-
-Frontend Render rewrite rule (React Router refresh fix):
-
-Source: /* → Destination: /index.html → Action: Rewrite
-
-Frontend Render security headers:
+Security headers on Render:
 
 Path	Header	Value
 /*	X-Frame-Options	DENY
 /*	X-Content-Type-Options	nosniff
 /*	Referrer-Policy	strict-origin-when-cross-origin
-/*	Permissions-Policy	geolocation=(self), microphone=(), camera=()
+/*	Permissions-Policy	geolocation=(self), microphone=(), camera=(self), bluetooth=(self)
 /*	Strict-Transport-Security	max-age=31536000; includeSubDomains
-Auto-deploy: git push to main triggers both services to redeploy in ~1-3 min.
+⚠️ Permissions-Policy must allow camera=(self) and bluetooth=(self) for AR + band
 
-Free tier: Backend sleeps after 15 min inactivity. UptimeRobot pinging https://movex-zkgd.onrender.com/api/health every 14 min keeps it warm.
+Auto-deploy: git push to main redeploys both services in ~1–3 min.
 
-PWA: Installed PWA auto-updates on git push + Render redeploy. No reinstall needed. registerType: 'autoUpdate' + registerSW({ immediate: true }) in main.jsx.
+Free tier: Backend sleeps after 15 min. UptimeRobot pinging /api/health every 14 min.
+
+PWA: Auto-updates on deploy. Workbox precache limit bumped to 5 MB (TF.js bundle).
 
 📁 4. CRITICAL FILE MAP
 Frontend
 text
 frontend/
-├── tailwind.config.cjs        ← MUST be .cjs (package.json is "type": "module")
-├── postcss.config.cjs         ← MUST be .cjs
-├── vite.config.js             ← Vite handles its own config as .js
-├── public/ (icons, geojson, hubs)
+├── tailwind.config.cjs          ← MUST be .cjs
+├── postcss.config.cjs           ← MUST be .cjs
+├── vite.config.js               ← has @mediapipe/pose alias → mediapipe-stub.js
+├── public/
+│   ├── icon-192.png, icon-512.png
+│   ├── geojson/india-states.geojson
+│   ├── assets/hubs/level_1..5.webp
+│   └── models/squat.fbx, pushup.fbx   ← 1.9 MB each (unused, reserved for future 3D trainer)
 └── src/
-    ├── api.js                    ← axios, x-auth-token header, 401 handler, VITE_API_URL
+    ├── api.js                    ← axios, x-auth-token, 401 handler
     ├── App.jsx                   ← routes + inline auth (no AuthContext)
-    ├── main.jsx                  ← imports index.css + registerSW
-    ├── index.css                 ← Tailwind + GLASS + CLEAN SURFACE utilities
+    ├── main.jsx
+    ├── index.css                 ← Tailwind + glass + clean-surface utilities
     ├── data/ (regionConfig, geoHierarchy, hubAssets)
-    ├── services/aiCoachApi.js
+    ├── services/
+    │   ├── aiCoachApi.js
+    │   ├── bandService.js        ← OLD MoveX-protocol band (20-byte packets, unused)
+    │   ├── athloniaBandService.js ← ⭐ NEW Athlonia 12-byte protocol
+    │   ├── sensorService.js      ← GPS + motion
+    │   ├── penaltyApi.js
+    │   └── arActivityApi.js      ← submit AR workout → MoveX activity
+    ├── lib/ar/                    ← AR LOGIC (ported from ARFit-v6)
+    │   ├── geometry.js, repCounter.js, formRules.js
+    │   ├── analyzers.js, exercises.js, history.js
+    │   └── mediapipe-stub.js     ← stubs @mediapipe/pose (UMD workaround)
+    ├── hooks/
+    │   ├── usePoseEngine.js       ← TensorFlow MoveNet wrapper
+    │   └── useAthloniaBand.js     ← ⭐ NEW Athlonia React hook
     ├── utils/regionUtils.js
     ├── components/
-    │   ├── ui/                   ← ⭐ SHARED DESIGN SYSTEM
-    │   │   ├── MoveXCard.jsx
-    │   │   ├── SectionHeader.jsx
-    │   │   ├── Button.jsx
-    │   │   ├── EmptyState.jsx
-    │   │   └── LoadingSkeleton.jsx
-    │   ├── layout/
-    │   │   ├── Sidebar.jsx           ← floating glass, left-3 top-1 bottom-3, rounded-3xl
-    │   │   ├── TopHeader.jsx         ← floating glass, sticky top-1 mx-3, rounded-2xl
-    │   │   ├── BottomNavigation.jsx  ← floating glass pill, bottom-3 left-3 right-3
-    │   │   └── DashboardLayout.jsx   ← glass-page-bg, md:ml-[17.5rem], pb-28
-    │   ├── map/ (IndiaLayer, StateBoundariesLayer, IndiaOutlineLayer, CityStationsLayer, CityCollectiveHub, StateHubsLayer, MapZoomWatcher, MapCenterWatcher, MaharashtraLayer)
-    │   ├── rewards/ (TrophyBalanceHeader, RewardCard, RewardFilters, NextRewardProgress, RedemptionSuccessModal, MyRewardsList, RedemptionHistory)
-    │   ├── MoveXMoment.jsx          ← ⭐ 1080×1920 / 1080×1080 shareable card
+    │   ├── ui/                    ← MoveXCard, Button, MoveXGlassPanel, SectionHeader, EmptyState, LoadingSkeleton
+    │   ├── layout/                ← Sidebar (no AR/AI Coach), TopHeader, BottomNavigation (no AR/AI Coach in More), DashboardLayout
+    │   ├── penalties/             ← FriendlyNudge, StrikeIndicator, WinBackBanner
+    │   ├── map/
+    │   ├── rewards/
+    │   ├── ar/                    ← ARWorkoutScreen
+    │   ├── band/                  ← ⭐ NEW AthloniaBandWidget
+    │   ├── AICoachFAB.jsx         ← ⭐ NEW floating AI Coach button (z-8000)
+    │   ├── MoveXMoment.jsx
     │   ├── DashboardMap.jsx
-    │   ├── Logo.jsx
-    │   └── NotificationBell.jsx
+    │   └── Logo.jsx
     ├── context/TrophyContext.jsx
     └── pages/
         ├── Login.jsx, Register.jsx (Pro Athlete Flow = ₹99)
-        ├── BeginnerDashboard.jsx, ProDashboard.jsx, Dashboard.jsx (legacy dark)
-        ├── StartActivityPage.jsx (real GPS tracking + report + MoveX Moment)
+        ├── BeginnerDashboard.jsx, ProDashboard.jsx (+ AthloniaBandWidget), Dashboard.jsx (legacy)
+        ├── StartActivityPage.jsx       ← Indoor Workout → /ar, has AR Camera badge
         ├── ActivityResultPage.jsx, ActivityHistoryPage.jsx
-        ├── AnalyticsPage.jsx (charts + PDF)
-        ├── MapPage.jsx (dynamic title)
-        ├── RewardsPage.jsx, QuestsPage.jsx
-        ├── Leaderboard.jsx
-        ├── Profile.jsx
-        ├── ClanPage.jsx
-        └── AICoachPage.jsx (ChatGPT-style, sidebar + drawer + rename/delete)
+        ├── AnalyticsPage.jsx, MapPage.jsx, RewardsPage.jsx, QuestsPage.jsx
+        ├── Leaderboard.jsx, Profile.jsx, ClanPage.jsx, PenaltiesPage.jsx
+        ├── **ARSection.jsx**            ← AR picker / history
+        └── AICoachPage.jsx             ← defaults to new chat on mount
 Backend
 text
 backend/
-├── server.js                  ← STARTS WITH dns.setServers([...])
-│                                 HAS helmet + rate limiters + strict CORS
+├── server.js                    ← dns.setServers + helmet + rate limiters + /internal/cron/daily
 ├── data/regionHierarchy.js
 ├── models/
-│   ├── User.js                ← accountType: 'BEGINNER' | 'PRO'
-│   ├── Activity.js, Community.js, RegionalContribution.js
-│   ├── Reward.js, RewardInventory.js, RewardRedemption.js, TrophyTransaction.js
-│   ├── Clan.js, ClanMember.js, ClanEnergyTransaction.js, ClanXPTransaction.js, ClanChatMessage.js
-│   ├── MoveXMoment.js
-│   ├── AICoachProfile.js
-│   └── AIConversation.js      ← { userId, title, accountType, personality, messages[], createdAt, updatedAt }
+│   ├── User.js (accountType), Activity.js, Community.js, RegionalContribution.js
+│   ├── Reward*.js, TrophyTransaction.js
+│   ├── Clan*.js
+│   ├── MoveXMoment.js, AICoachProfile.js, AIConversation.js, VerificationResult.js
+│   └── Penalty System: Penalty.js, Strike.js, StreakFreeze.js, PenaltyNotification.js, WinBackState.js
 ├── routes/
-│   ├── auth.js (⚠️ login/register are rate-limited, /me is NOT)
-│   ├── activity.js, verification.js, community.js, rewards.js, leaderboard.js, geo.js, clans.js
-│   └── aiCoach.js             ← CRUD + AI title generation + legacy /chat
-├── services/avsEngine.js, notificationService.js
-└── scripts/ (backfill*, fix*, test*, merge*)
+│   ├── auth.js, activity.js, verification.js (AR-aware), community.js
+│   ├── rewards.js, leaderboard.js, geo.js, clans.js, analytics.js
+│   ├── aiCoach.js, penalties.js
+├── services/
+│   ├── avsEngine.js             ← AR-aware (isAR branch) + standard GPS
+│   ├── penaltyEngine.js, winBackService.js, cron.js
+│   ├── notificationService.js, questEngine.js
+└── scripts/
 ✅ 5. WHAT'S BUILT
 ✅ Core
-☑ JWT auth (movex_token + movex_user)
-☑ Registration: State → City → Region cascade
-☑ accountType separation
-☑ Deployed on Render + MongoDB Atlas
-☑ Auto-deploy on git push
-☑ Security: helmet, rate limiting (skipped in dev), strict CORS, security headers
-✅ MoveX Living Map
-☑ Hierarchical (India → State → City → Region)
-☑ Zoom-based layer switching (≤6 / 7-8 / 9-10 / ≥11)
-☑ Home state = #2563EB, others from curated palette
-☑ State boundaries soft gray, India outline black z=465
-☑ Dynamic title: India / Maharashtra / Pune / Kothrud Living Map
-☑ Hub size hierarchy:
-India-level state hubs: 32px
+JWT auth, register cascade (State→City→Region)
 
-Active state hub: 64px
+accountType separation
 
-City stations: 36px
+Deployed on Render + MongoDB Atlas
 
-City collective hub: zoom 9-10
+Security: helmet, rate limiters (dev skip), strict CORS, security headers, DNS workaround
 
-☑ 23 states, 51 cities, ~370 regions
+PWA auto-update
+
+✅ Living Map
+Hierarchical: India → State → City → Region
+
+Zoom-based layer switching (≤6 / 7-8 / 9-10 / ≥11)
+
+Home state #2563EB; others from palette
+
+Dynamic title
+
+Hub sizes: 32px state, 64px active, 36px city stations
+
+✅ Activity Flow (GPS)
+Real GPS tracking, Haversine distance, accuracy filter
+
+Manual distance fallback
+
+Premium report: status pill, rewards, impact, AVS, sensor evidence
+
+MoveX Moment shareable card
+
 ✅ MoveX Bazaar & Rewards
-☑ Trophy economy + TrophyContext single source of truth
-☑ 18 seeded rewards
-☑ Atomic redemption with idempotencyKey
-☑ Boost activation (24h/48h)
-☑ My Rewards + equip + history
-☑ Mobile: 2-column card grid (no carousel)
-☑ Loading → LoadingSkeleton grid, empty → EmptyState
-✅ Activity Flow
-☑ Real GPS tracking via navigator.geolocation.watchPosition
-☑ Haversine distance calculation, accuracy-filtered (< 50m)
-☑ GPS status: Acquiring / Active / Denied / Indoor
-☑ Manual distance fallback when GPS fails
-☑ Double-finish protection
-☑ Premium report: status pill, rewards, impact, AVS pipeline
-☑ MoveX Moment: 1080×1920 story + 1080×1080 square
-☑ Download / Copy Caption / Native share sheet
-☑ "View Activity" navigates to /activity (not /activity/result/:id)
-✅ Leaderboard
-☑ Geo-scoped: Global / State / City / Region
-☑ Tabs styled consistently, no mojibake in headers
-☑ Row for current user highlighted with [YOU] badge
-☑ Mobile table: horizontal scroll only inside container
-☑ Regions Ranking shows only current city's regions
-✅ Quests
-☑ 2-column grid on mobile
-☑ "Track" button navigates to /start (was broken no-op)
-☑ Progress bar blue while active, green when completed
-☑ Uses MoveXCard + Button + EmptyState
-✅ MoveX Moment (NEW)
-☑ MoveXMoment.jsx — full-size 1080×1920 or 1080×1080 card export
-☑ Brand gradient background, decorative circles
-☑ Icon + activity type + distance + duration + energy + XP + streak + region
-☑ html-to-image export
-☑ Web Share API for mobile → native share sheet
-☑ Copy caption with hashtags
-✅ AI Coach (ChatGPT-Style)
-☑ Backend AIConversation with embedded messages
-☑ AI-generated 2-4 word titles via Gemini (e.g. "Back Pain", "Running Stamina")
-☑ Fallback deterministic title if AI fails
-☑ Ownership enforced on all endpoints
-☑ Multi-turn memory (last 20 messages)
-☑ User message persisted BEFORE AI call
-☑ AI reply + AI title run in Promise.all (no added latency)
-☑ Desktop: 2-panel (sidebar + chat)
-☑ Mobile: collapsible drawer
-☑ Grouped: Today / Yesterday / Previous 7 Days / Older
-☑ Three-dot menu: Rename / Delete
-☑ Typing indicator (3 dots), retry banner on failure
-☑ Quick prompts on empty chat
-☑ Lazy conversation creation (no duplicate empty "New Chat")
-✅ Analytics
-☑ Primary stats: Workouts, Distance, Energy, XP
-☑ Secondary stats: Duration (rounded), Streak, Trophies
-☑ Distance trend line chart (30 days)
-☑ Workout types bar chart
-☑ Recent activities timeline
-☑ Generate Analysis PDF (preserved jsPDF logic)
-✅ UI Design System (Phase 1-8 complete)
-☑ MoveXCard — variants: elevated, hero, padded, to
-☑ SectionHeader — title + subtitle + optional action link + icon
-☑ Button — variants: primary / secondary / ghost / danger, sizes: sm / md / lg, loading state
-☑ EmptyState — icon + title + message + optional action
-☑ LoadingSkeleton — variants: line / metric / circle / card / chip
-☑ Applied across: Dashboard, Activity, Map, Profile, Rewards, Quests, Leaderboard, Analytics, AI Coach
-✅ Glassmorphism (fixed nav only)
-☑ .glass-page-bg — soft single-color blue gradient
-☑ .glass-strong — floating panels (sidebar, topheader, bottomnav, modals)
-☑ .glass-subtle — small pills
-☑ Content cards use clean white (MoveXCard), NOT glass (readability)
-☑ Sidebar: fixed left-3 top-1 bottom-3 rounded-3xl
-☑ TopHeader: sticky top-1 mx-3 rounded-2xl
-☑ BottomNavigation: floating pill bottom-3 left-3 right-3 rounded-2xl
-☑ Center Start button: white ring border-4 border-white/70
-✅ Geographic Data
-23 states: Maharashtra (12 cities), MP (8), Rajasthan (8), UP, Bihar, Jharkhand, Odisha, Chhattisgarh, AP, Haryana, Kerala, Punjab, J&K, HP, Uttarakhand, Assam, Sikkim, Karnataka, Delhi, Telangana, TN, WB, Gujarat
+Trophy economy + TrophyContext
 
-🔧 6. KNOWN FIXES APPLIED
+Atomic redemption + idempotency
+
+2-column mobile grid
+
+Rewards Gate (7-day unlock for win-back users)
+
+✅ Leaderboard, Quests, Analytics
+Geo-scoped leaderboard with medal-style badges
+
+2-col mobile quest grid with color-coded category badges
+
+Analytics with charts + PDF export
+
+✅ AI Coach (ChatGPT-style)
+Persistent conversations
+
+AI-generated short titles (Gemini)
+
+Multi-turn memory
+
+Rename + delete
+
+Defaults to a fresh new chat on mount
+
+Floating FAB (bottom-right, z-8000) opens AI Coach from anywhere
+
+FAB hidden on /ai-coach page itself
+
+✅ Penalty System
+5 models, penaltyEngine.js, winBackService.js, cron.js
+
+11 endpoints at /api/penalties/*
+
+Friendly nudge, strike indicator, win-back banner, standing page
+
+✅ Sensor Integration (Phone)
+sensorService.js — GPS + Accel + Gyro + Mag
+
+Permission gate modal
+
+Sensor evidence panel
+
+✅ AR Workouts
+7 logic files ported from ARFit-v6
+
+usePoseEngine.js (MoveNet + camera + countdown + rep counting)
+
+ARWorkoutScreen.jsx (fullscreen camera + skeleton + HUD + enhanced report)
+
+ARSection.jsx (picker + history)
+
+Rewards integrated (Energy/XP/Trophy/Streak)
+
+AVS pipeline for AR
+
+Indoor Workout on /start navigates to /ar with "AR Camera" badge
+
+✅ Athlonia Band Integration (NEW — Phase 1-2 Complete)
+Protocol: 12-byte packets, little-endian, 10 Hz, 0xAA header
+
+Device: Athlonia_Band (ESP32-S3)
+
+Service UUID: 4fafc201-1fb5-459e-8fcc-c5c9c331914b
+
+Notify Char: beb5483e-36e1-4688-b7f5-ea07361b26a8
+
+Data: HR, Steps, Cadence, Quality, Battery, Sequence
+
+Decoder logic: bit 7 of byte 8 = HR valid flag, lower 7 bits = quality
+
+Files:
+
+src/services/athloniaBandService.js — BLE client + decoder
+
+src/hooks/useAthloniaBand.js — React state wrapper
+
+src/components/band/AthloniaBandWidget.jsx — Pro dashboard widget
+
+Widget mounted ONLY on Pro Dashboard
+
+Beginner dashboard untouched — verified isolation
+
+Android Chrome only (Web Bluetooth unsupported on iOS/Firefox)
+
+✅ Navigation Cleanup
+Removed AR + AI Coach entries from Sidebar (desktop)
+
+Removed AR + AI Coach entries from BottomNavigation "More" (mobile)
+
+AI Coach accessible via floating FAB (bottom-right corner)
+
+AR accessible via Indoor Workout in /start
+
+✅ UI Design System
+MoveXCard variants: default / premium / metric / bento / hero / glass
+
+MoveXGlassPanel (floating overlays only)
+
+Button variants: primary / premium / secondary / ghost / danger
+
+EmptyState, LoadingSkeleton (shimmer)
+
+Gradient icon tiles (flat single-color)
+
+🎨 6. Z-INDEX HIERARCHY
+Element	z-index	File
+Map info panel / legend	z-[1000]	MapPage.jsx
+AI Coach FAB	z-[8000]	AICoachFAB.jsx
+Bottom nav pill	z-[9000]	BottomNavigation.jsx
+Nav drawer overlay	z-[9990]	BottomNavigation.jsx
+Nav drawer	z-[9999]	BottomNavigation.jsx
+⚠️ Reason: Leaflet map panes use z-index 400-1000 internally. Anything fixed-position must be above 1000 to sit on top of the map.
+
+📡 7. ATHLONIA BAND PROTOCOL REFERENCE
+12-byte packet layout (little-endian)
+Byte	Field	Type	Notes
+0	Header	uint8	Always 0xAA
+1	Version	uint8	0x01
+2	Packet Type	uint8	0x01 = telemetry
+3	Sequence	uint8	Rolling 0-255
+4	Heart Rate	uint8	0 = invalid (use quality byte)
+5	Steps Low	uint8	Low byte
+6	Steps High	uint8	High byte
+7	Cadence	uint8	Steps per minute
+8	Quality / Valid	uint8	bit 7 = HR valid, bits 0-6 = quality
+9	Battery	uint8	0-100%
+10	CRC Low	uint8	
+11	CRC High	uint8	
+Decoding
+javascript
+const hrValid = (bytes[8] & 0x80) > 0;
+const quality = bytes[8] & 0x7F;
+const steps = bytes[5] | (bytes[6] << 8);
+const hr = hrValid ? bytes[4] : 0;
+Service API
+javascript
+import { AthloniaBandService } from '../services/athloniaBandService';
+AthloniaBandService.isSupported()
+new AthloniaBandService()
+band.connect()                     // → { deviceName, deviceId }
+band.disconnect()
+band.getLatest()
+band.getPackets()
+band.getAverageHR(30)              // avg over last 30s
+band.getMaxHR(60)                  // max over last 60s
+band.resetBuffer()
+band.onPacket = (packet) => {...}
+band.onConnect = (info) => {...}
+band.onDisconnect = () => {...}
+📊 8. PENALTY SYSTEM REFERENCE
+Inactivity Ladder
+Days	Stage	Notification	Penalty	Duration
+0–2	Grace	(silent)	—	—
+3–4	Nudge	"Hey, we miss you!"	—	—
+5–6	Last Chance	"Save my streak"	—	—
+7–9	Strike 1	"Streak at risk"	-10% Energy	3 days
+10–13	Strike 2	"Energy bonus paused"	-20% + Shield off	5 days
+14–17	Strike 3	"Restricted mode"	-30% + Chat lock	5 days
+18–29	Restricted	"One activity resets all"	Activity-only	Until active
+30+	Dormant → Win-Back	"Welcome back!"	No ban	—
+Consistency Grace
+Last 7 days	Grace
+7/7	7 days
+5–6/7	5 days
+3–4/7	3 days
+1–2/7	3 days
+0/7	2 days
+New user (<14d)	7 days
+Long streak (>14d)	7 days
+Win-Back (30+ days)
+Day 30: mark dormant, welcome armed
+
+Day 40: clan nudge
+
+Day 55: progress-safe reminder
+
+Day 75: silent archive
+
+Welcome Kit: +100 Energy, +50 Trophies, +1 Freeze, 2× XP ×3 activities
+
+Rewards Gate: 7 consecutive active days to reopen Bazaar
+
+🔧 9. KNOWN FIXES APPLIED
 #	Bug	Fix
-1-20	(see prior versions)	(unchanged)
-21	Register showed ₹299	Changed to ₹99
-22	Dashboard hero copy	"Move, Compete and Grow Together"
-23	PostCSS Unexpected token, expected "," from sucrase	Renamed postcss.config.js and tailwind.config.js → .cjs with module.exports
-24	tailwind.config.js had __CONFIG__ placeholder	Replaced with real config
-25	Em-dash mojibake in CSS comments	Rewrote index.css as pure ASCII
-26	429 during dev	Rate limiter now skip: () => process.env.NODE_ENV !== 'production'
-27	/auth/me counted against auth limiter	Auth limiter only applies to /login + /register
-28	Profile trophies.length disagrees with header	Now uses TrophyContext.balance (single source)
-29	SatelliteOff icon not in lucide	Swapped to WifiOff
-30	require('react') in JSX	Used forwardRef import
-31	Profile duration decimals (355.28000...)	Math.round(totalDuration)
-32	MoveX Moment "View Activity" went to nonexistent route	Navigates to /activity
-33	Quests "Track" button was no-op	navigate('/start')
-34	Leaderboard headers showed âš¡ â­	Replaced with plain text ("Energy", "XP")
-35	Hardcoded map title "MoveX Living Map"	Dynamic via mapTitle memo
-36	India state hubs too large (50px)	Now 32px
-37	Active state hub dominated (110px)	Now 64px
-⚠️ 7. CRITICAL CONVENTIONS & GOTCHAS
+1-30	(see prior versions)	unchanged
+31-42	(see prior versions)	unchanged
+43	MediaPipe UMD import	Alias @mediapipe/pose → mediapipe-stub.js
+44	PWA precache failed (2.94 MB > 2 MB)	workbox.maximumFileSizeToCacheInBytes: 5 MB
+45	Duplicate handleActivityClick	Deduped by line number
+46	AR workouts INVALID	avsEngine.js + verification.js branch on rawData.source === 'ar'
+47	AR AVS returns 0 Energy	Dedicated AR reward formula
+48	Profile.jsx import block mangled	Prepend missing React imports
+49	429 Too Many Requests in dev	Added IS_DEV + skip: skipLimiter to all 4 rate limiters in server.js
+50	Mobile nav showed AI Coach + AR	Removed from BottomNavigation.jsx More menu
+51	Drawer behind map	Bumped z-index on drawer + FAB + overlay above Leaflet's 1000
+52	Duplicate AR Camera badge	Deduped on StartActivityPage.jsx
+53	AI Coach auto-opened last chat	Changed mount effect to stay on fresh welcome screen
+54	AI Coach had extra bottom space	Container height 100dvh-200px → 100dvh-155px on mobile
+⚠️ 10. CRITICAL CONVENTIONS & GOTCHAS
 Conventions
-All IDs lowercase (pune, navi-mumbai)
+All IDs lowercase
 
-Backend Mongoose: camelCase (trophyPoints, accountType) — ⚠️ NOT athleteMode
+Backend Mongoose: camelCase (trophyPoints, accountType)
 
-Frontend configs: camelCase (regionIds)
+Colors: primary #2563EB, hover #1D4ED8
 
-Colors: primary #2563EB, hover #1D4ED8, success #20C9A6
+Radius: rounded-card (16px), rounded-panel (20px), rounded-hero (24px)
 
-Radius: rounded-2xl (cards), rounded-3xl (hero, floating panels)
+Layout: Sidebar md:ml-[17.5rem], bottom padding pb-28
 
-Floating layout offsets: Sidebar md:ml-[17.5rem], bottom padding pb-28
+Page title: text-2xl sm:text-3xl font-bold text-ink-900
 
-Card pattern: Always prefer MoveXCard over raw bg-white rounded-2xl
-
-Title pattern: text-2xl sm:text-3xl font-bold text-gray-900
-
-Section pattern: Always use SectionHeader component
+Always use MoveXCard, SectionHeader, Button, EmptyState, LoadingSkeleton
 
 Gotchas — File Writing (CRITICAL)
-❌ Never use Add-Content or Set-Content for source files — PowerShell 5.1 writes UTF-16LE with BOM → breaks Vite parser with misleading errors
+❌ Never use Add-Content or Set-Content for source files — PowerShell writes UTF-16LE with BOM
 
-❌ Never use non-ASCII chars (em-dash, smart quotes, ellipsis) in source files via PowerShell
+❌ Never use non-ASCII chars in source files via PowerShell (mojibake)
+
+❌ Never use regex on import blocks with [\s\S]*? — matches from first import {
+
+❌ Never Resolve-Path on files that don't exist — use absolute paths
+
+❌ Never nest backticks in PowerShell double-quoted strings
 
 ✅ Safe way: Node.js fs.writeFileSync(path, content, "utf8") via .cjs script
 
-✅ Safe way: Notepad with UTF-8 (plain, not BOM)
+✅ Safe way: @'...'@ here-string + [System.IO.File]::WriteAllText("abs-path", $c, UTF8-no-BOM)
 
-✅ Safest: VSCode
+✅ For JSX edits, always use Node.js, never PowerShell here-strings
 
-✅ .cjs scripts required in project with "type": "module" if using require()
+✅ Always check for idempotency — verify marker isn't already present before insert
+
+⚠️ Code blocks starting with import, const, function, export are JAVASCRIPT — paste into files, never run in PowerShell
 
 Gotchas — Vite / Config
 ✅ postcss.config.cjs + tailwind.config.cjs MUST be .cjs
 
-✅ vite.config.js stays .js
-
-✅ sucrase errors in .css = ESM/CJS config conflict
-
 ✅ Vite cache: Remove-Item -Recurse -Force node_modules\.vite
 
-Gotchas — Runtime
-❌ Never assume AuthContext exists — inline auth in App.jsx
+✅ MediaPipe workaround: resolve.alias['@mediapipe/pose'] → mediapipe-stub.js
 
-❌ Never full-file replace a file you haven't seen
+Gotchas — Runtime
+❌ Never assume AuthContext exists
+
+❌ Never full-file replace a file not yet seen
 
 ❌ Never use ?? in PowerShell 5.1
 
-✅ window.location.hostname on Render is wrong — use VITE_API_URL
+❌ Never run node -e "require('./foo')" from wrong directory
 
-✅ NODE_ENV=production on Render → rate limiters active
+✅ Backend and frontend in SEPARATE terminals
 
-✅ Local dev: rate limiters skipped via skip: () => IS_DEV
+✅ If port 5000 busy → taskkill /F /IM node.exe
 
-🎨 8. DESIGN SYSTEM REFERENCE
-Spacing: Page uses pt-2 pb-28 px-3 sm:px-4 on mobile
-Card: bg-white border border-gray-200/80 rounded-2xl + soft shadow
-Hero gradient: bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] shadow-hero
-Primary button: bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl h-11 px-4
-Secondary button: bg-white border border-gray-200 text-gray-700
+✅ Camera + TensorFlow + Web Bluetooth require HTTPS or localhost
 
-Typography hierarchy:
+✅ Web Bluetooth only works on Chrome Android + desktop Chrome/Edge — not iOS Safari, not Firefox
 
-Page title: text-2xl sm:text-3xl font-bold text-gray-900
+Gotchas — AR / TensorFlow
+✅ Bundle is ~2.95 MB (TF.js included)
 
-Section title: text-base font-semibold text-gray-900
+✅ Workbox precache limit 5 MB
 
-Card title: text-sm font-medium
+✅ MoveNet SINGLEPOSE_LIGHTNING model
 
-Body: text-sm text-gray-600
+✅ Analyzer state machine: standing → descending → bottom → ascending
 
-Meta: text-xs text-gray-500
+Gotchas — Athlonia Band
+✅ 10 Hz packet rate — expect 600 packets per 60s in buffer
 
-Label: text-[10px] font-semibold uppercase tracking-wider text-gray-500
+✅ Packet must start with 0xAA — discard any non-matching packet
 
-🚀 9. HOW TO RUN
+✅ HR valid flag is bit 7 of byte 8 — always check before displaying HR
+
+✅ steps uses little-endian — low | (high << 8)
+
+✅ Service file uses MAX_BUFFER = 600 to cap memory (60s rolling window)
+
+⚠️ Do NOT change the existing bandService.js — it uses a different 20-byte protocol
+
+🚀 11. HOW TO RUN (LOCAL)
+Three separate terminals:
+
 powershell
 # Terminal 1 — Backend
 cd C:\Users\Rupam\MoveX\backend
@@ -369,41 +472,40 @@ npm run dev
 # Terminal 2 — Frontend
 cd C:\Users\Rupam\MoveX\frontend
 npm run dev
-Test on: http://localhost:5173
 
-🎯 10. HOW TO ADD A NEW STATE + CITY
-frontend/src/data/regionConfig.js — add regions array + register
+# Terminal 3 (temporary) — One-off scripts
+cd C:\Users\Rupam\MoveX\backend
+node script.cjs
+Access: http://localhost:5173
 
-frontend/src/data/geoHierarchy.js — add state, city, register in getRegionsForCity
+AR + band only work on localhost or HTTPS
 
-backend/data/regionHierarchy.js — add all three hierarchy entries
+If port 5000 busy: taskkill /F /IM node.exe
 
-backend/models/User.js — append regions to enum
+🔮 12. PENDING / IN-PROGRESS
+⏳ Athlonia Phase 3: Collect band data during activity → send as rawData.band to backend
 
-backend/routes/community.js — append to ALL_REGIONS
+⏳ Athlonia Phase 4: AVS integration — HR + cadence signal boosts verification score
 
-frontend/src/pages/MapPage.jsx — add to CITIES + STATES
+⏳ Athlonia Phase 5: Show band connection status on Start Activity page
 
-frontend/src/components/DashboardMap.jsx — repeat step 6
+⏳ Lazy-load AR so TF.js is in its own chunk (main bundle 2.95 MB → ~550 KB)
 
-🔮 11. PENDING / IN-PROGRESS
-⏳ Speed up activity report generation
+⏳ AVS enhancement to score rawData.phone.motionSamples
 
-⏳ Full verification.js refactor
+⏳ Backend rewards gate enforcement on /rewards/redeem
 
-⏳ Extract shared CITIES/STATES to utils/mapConfig.js (currently duplicated in MapPage + DashboardMap)
+⏳ Automated cron (manual trigger only)
 
-⏳ Remove legacy MaharashtraLayer (only renders for Maharashtra)
+⏳ Extract shared CITIES/STATES to utils/mapConfig.js
 
-⏳ Remove legacy Dashboard.jsx (dark theme, not routed)
+⏳ Socket.IO URL still hardcoded to http://localhost:5000 in NotificationBell.jsx
 
-⏳ Socket.IO URL still hardcoded to http://localhost:5000 — needs env var fix
+⏳ 3D Mixamo trainer (2D skeleton in place; .fbx models + three installed, unused)
 
-⏳ Rename conversation polish in AI Coach (currently works, could be refined)
+⏳ Forgiveness tokens (penalty system Phase 2)
 
-🐛 Dev-only: Socket.IO reconnect loop when backend is down — harmless but noisy
-
-📌 12. QUICK REFERENCE — CITY COORDINATES
+📌 13. QUICK REFERENCE — CITY COORDINATES
 City	Center	Regions
 Pune	[18.56, 73.85]	7
 Mumbai	[19.076, 72.8777]	19
@@ -427,16 +529,24 @@ Shimla	[31.1048, 77.1734]	6
 Dehradun	[30.3165, 78.0322]	7
 Guwahati	[26.1445, 91.7362]	7
 Gangtok	[27.3389, 88.6065]	7
-💬 13. COMMUNICATION RULES FOR AI
-Trigger: user says MoveX → assume this context.
+💬 14. COMMUNICATION RULES FOR AI
+Trigger: User says MoveX → assume this context.
 
 Never guess at file contents. Ask user to paste.
 
-Never full-file replace files not yet seen.
+Never full-file replace a file not yet seen.
 
 Never use PowerShell-breaking syntax (??, backticks, $var in node -e).
 
 Never use Add-Content/Set-Content for source files → use Node.js or Notepad UTF-8.
+
+NEVER use regex on import blocks with [\s\S]*?
+
+NEVER nest backticks in PowerShell here-strings
+
+NEVER Resolve-Path on files that don't exist
+
+ALWAYS check for idempotency — verify marker isn't already present before insert
 
 Prefer surgical patches over rewrites.
 
@@ -450,5 +560,12 @@ Verify field names (accountType, not athleteMode).
 
 Verify config extensions (.cjs for postcss + tailwind).
 
-Prefer MoveXCard / SectionHeader / Button / EmptyState / LoadingSkeleton in all new code.
+Always cd backend before running backend scripts.
 
+Backend and frontend in separate terminals.
+
+For JSX edits, use Node.js scripts, never PowerShell.
+
+Escaping JSX: use @'...'@ here-strings, [System.IO.File]::WriteAllText(), absolute paths.
+
+JavaScript vs PowerShell: if a code block starts with import, const, let, function, or export, it's JS — do NOT run it in PowerShell. Label such blocks clearly as "for a file" not "to run".

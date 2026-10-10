@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopHeader from './TopHeader';
 import BottomNavigation from './BottomNavigation';
+import AICoachFAB from '../AICoachFAB';
 import API from '../../api';
 
 const DashboardLayout = ({ user, children, logout }) => {
@@ -39,6 +40,7 @@ const DashboardLayout = ({ user, children, logout }) => {
         </main>
       </div>
       <BottomNavigation user={userStats} logout={logout} />
+      <AICoachFAB />
     </div>
   );
 };

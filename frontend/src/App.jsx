@@ -13,6 +13,7 @@ import StartActivityPage from './pages/StartActivityPage';
 import ActivityResultPage from './pages/ActivityResultPage';
 import ActivityHistoryPage from './pages/ActivityHistoryPage';
 import AICoachPage from './pages/AICoachPage';
+import PenaltiesPage from './pages/PenaltiesPage';
 import GameModesPage from './pages/GameModesPage';
 import NotificationsPage from './pages/NotificationsPage';
 import RewardsPage from './pages/RewardsPage';
@@ -60,6 +61,7 @@ function App() {
                   <Route path="/activity-result/:id" element={<ActivityResultPage />} />
                   <Route path="/activity" element={<ActivityHistoryPage />} />
                   <Route path="/ai-coach" element={<AICoachPage user={user} />} />
+                  <Route path="/penalties" element={<PenaltiesPage />} />
                   <Route path="/game-modes" element={<GameModesPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/rewards" element={<RewardsPage />} />

@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import API from '../api';
 import { motion } from 'framer-motion';
-import { Sparkles, Gift, ArrowRight } from 'lucide-react';
+import { Sparkles, Lock, Gift, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useTrophy } from '../context/TrophyContext';
+import { getBazaarStatus } from '../services/penaltyApi';
 
 import TrophyBalanceHeader from '../components/rewards/TrophyBalanceHeader';
 import RewardFilters from '../components/rewards/RewardFilters';
@@ -14,6 +16,7 @@ import RedemptionHistory from '../components/rewards/RedemptionHistory';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import EmptyState from '../components/ui/EmptyState';
 import MoveXCard from '../components/ui/MoveXCard';
+import GearSearch from '../components/gear/GearSearch';
 
 const CATEGORY_MAP = {
   all: 'All',
@@ -34,6 +37,7 @@ const RewardsPage = () => {
   const [sort, setSort] = useState('recommended');
   const [success, setSuccess] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [bazaarGate, setBazaarGate] = useState(null);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -48,6 +52,7 @@ const RewardsPage = () => {
 
   useEffect(() => {
     loadCatalog();
+    getBazaarStatus().then((s) => setBazaarGate(s)).catch(() => {});
   }, [loadCatalog]);
 
   const visible = useMemo(() => {
@@ -107,7 +112,6 @@ const RewardsPage = () => {
         <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-20 -left-10 w-40 h-40 rounded-full bg-white/5 blur-3xl pointer-events-none" />
         <div className="relative">
-
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight mb-1.5">
             Rewards &amp; Partner Perks
           </h1>
@@ -116,6 +120,53 @@ const RewardsPage = () => {
           </p>
         </div>
       </div>
+
+      {/* ============ REWARDS GATE ============ */}
+      {bazaarGate && !bazaarGate.unlocked && (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-[#FFFBEB] to-[#FEF3C7] p-5 sm:p-6 shadow-[0_8px_24px_-8px_rgba(245,158,11,0.25)]">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+              <Lock className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-0.5">
+                MoveX Bazaar
+              </p>
+              <h2 className="text-lg font-bold text-amber-900 leading-tight">
+                Warming up
+              </h2>
+              <p className="text-sm text-amber-900/75 mt-1">
+                Welcome back! Complete <strong>7 consecutive active days</strong> to reopen the Bazaar.
+              </p>
+
+              <div className="mt-3 flex items-center gap-3">
+                <div className="flex-1 bg-amber-500/20 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all"
+                    style={{ width: Math.max((bazaarGate.progress / bazaarGate.target) * 100, 2) + '%' }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-amber-800 tabular-nums shrink-0">
+                  {bazaarGate.progress} / {bazaarGate.target} days
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 mt-3 text-[11px] text-amber-800/80">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>Miss a day resets the counter. No penalty, just restart.</span>
+              </div>
+
+              <Link
+                to="/start"
+                className="inline-flex items-center gap-1.5 mt-3 bg-gradient-to-b from-amber-500 to-amber-600 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-md shadow-amber-500/25 transition active:scale-[0.98]"
+              >
+                Log today's activity
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       <TrophyBalanceHeader balance={displayBalance} loading={balanceLoading} />
 
@@ -127,6 +178,7 @@ const RewardsPage = () => {
       <div className="flex gap-1 border-b border-surface-200 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar">
         {[
           { k: 'catalog', label: 'Catalog' },
+          { k: 'gear', label: 'Gear Deals' },
           { k: 'mine', label: 'My Rewards' },
           { k: 'history', label: 'History' },
         ].map((t) => (
@@ -168,7 +220,7 @@ const RewardsPage = () => {
               <EmptyState
                 icon={Gift}
                 title="No rewards match this filter"
-                message="Try a different category or check back soon — new rewards drop weekly."
+                message="Try a different category or check back soon - new rewards drop weekly."
               />
             </MoveXCard>
           ) : (
@@ -190,6 +242,24 @@ const RewardsPage = () => {
             </motion.div>
           )}
         </>
+      )}
+
+      {/* GEAR DEALS - powered by TinyFish live search */}
+      {tab === 'gear' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg icon-tile-soft-blue flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-[#2563EB]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-ink-900">Live Gear Prices</p>
+              <p className="text-[11px] text-ink-500">
+                Real-time results from Flipkart, Amazon, and Decathlon
+              </p>
+            </div>
+          </div>
+          <GearSearch />
+        </div>
       )}
 
       {tab === 'mine' && <MyRewardsList onRefresh={loadCatalog} />}

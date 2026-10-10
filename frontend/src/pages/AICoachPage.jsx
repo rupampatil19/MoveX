@@ -74,10 +74,10 @@ const AICoachPage = ({ user }) => {
       try {
         const list = await listConversations();
         setConversations(list);
-        const firstReal = list.find((c) => c.title && c.title !== 'New Chat');
-        if (firstReal) {
-          await openConversation(firstReal._id);
-        }
+      setActiveConvId(null);
+      setMessages([]);
+      setFailedText(null);
+      setInput('');
       } catch (err) {
         console.error('Failed to load conversations', err);
       } finally {
@@ -453,7 +453,7 @@ const AICoachPage = ({ user }) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <style>{`@keyframes ai-pulse { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }`}</style>
 
-      <div className="flex h-[calc(100dvh-200px)] md:h-[calc(100vh-140px)] glass rounded-3xl overflow-hidden">
+      <div className="flex h-[calc(100dvh-155px)] md:h-[calc(100vh-140px)] glass rounded-3xl overflow-hidden">
         {/* DESKTOP SIDEBAR */}
         <aside className="hidden md:flex md:w-64 flex-col border-r border-white/40 bg-white/20">
           <div className="p-3 border-b border-white/40">
