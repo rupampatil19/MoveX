@@ -30,9 +30,11 @@ const NOTIFY_CHAR_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 const HEADER_BYTE = 0xAA;
 const PACKET_LENGTH_LEGACY = 12;
 const PACKET_LENGTH_APEX = 50;
+const PACKET_LENGTH_V101 = 56;
 
 // MoveX-style activity strings (lowercase snake_case)
-const ACTIVITY_NAMES = ['resting', 'candidate', 'walking', 'running', 'workout'];
+const ACTIVITY_NAMES = ['resting', 'candidate', 'walking', 'running', 'combat_striking', 'combat_guard'];
+const COMBAT_MODE_NAMES = ['boxing', 'mma', 'muaythai'];
 
 export class AthloniaBandService {
   constructor() {
@@ -103,6 +105,30 @@ export class AthloniaBandService {
     return () => this._subscribers.delete(fn);
   }
 
+  /**
+   * v10.1: send a single-character sport mode command on the Text characteristic.
+   * Requires the firmware to expose the Text characteristic as writable.
+   * Boxing = 'B', MMA = 'M', Muay Thai = 'T'.
+   * Fire-and-forget: no BLE ack.
+   */
+  async setSportMode(sport) {
+    const map = { boxing: 'B', mma: 'M', muaythai: 'T' };
+    const cmd = map[String(sport).toLowerCase()];
+    if (!cmd) throw new Error('Unknown sport: ' + sport);
+    if (!this.server || !this.connected) throw new Error('Band not connected');
+    try {
+      const TXT_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a9';
+      const svc = await this.server.getPrimaryService(SERVICE_UUID);
+      const char = await svc.getCharacteristic(TXT_UUID);
+      const buf = new TextEncoder().encode(cmd);
+      await char.writeValue(buf);
+      return true;
+    } catch (err) {
+      console.warn('[band] setSportMode failed:', err.message);
+      return false;
+    }
+  }
+
   getPackets() { return this.packets.slice(); }
   getLatest() { return this.packets.length ? this.packets[this.packets.length - 1] : null; }
   resetBuffer() { this.packets = []; }
@@ -143,7 +169,7 @@ export class AthloniaBandService {
     const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
 
     let decoded = null;
-    if (len === PACKET_LENGTH_APEX) {
+    if (len === PACKET_LENGTH_V101 || len === PACKET_LENGTH_APEX) {
       decoded = AthloniaBandService.decodeApexPacket(bytes);
     } else if (len === PACKET_LENGTH_LEGACY) {
       decoded = AthloniaBandService.decodeAthloniaPacket(bytes);
@@ -206,14 +232,35 @@ export class AthloniaBandService {
     const ppgOk = (sensorStatus & 0x01) > 0;
     const imuOk = (sensorStatus & 0x02) > 0;
 
+    // === v10.1 combat fields (bytes 50-55, present only in 56-byte packets) ===
+    let combat = null;
+    if (view.byteLength >= PACKET_LENGTH_V101) {
+      const strikesThisSec    = view.getUint16(50, true);
+      const peakForceThisSec  = view.getUint16(52, true) / 100;
+      const combatMode        = view.getUint8(54);
+      const strikeTypeFlags   = view.getUint8(55);
+      combat = {
+        strikesThisSec,
+        peakForceThisSec,
+        combatMode,
+        combatModeName: COMBAT_MODE_NAMES[combatMode] || 'boxing',
+        strikeTypeFlags,
+        strikeTypes: {
+          straight: !!(strikeTypeFlags & 0x01),
+          hook:     !!(strikeTypeFlags & 0x02),
+          uppercut: !!(strikeTypeFlags & 0x04),
+          block:    !!(strikeTypeFlags & 0x08),
+        },
+      };
+    }
+
     return {
-      // Legacy-compatible keys (unchanged semantics for existing consumers)
       sequence, version,
       heart_rate, raw_heart_rate: rawHR, hr_valid: hrValid, quality,
       steps, cadence, battery,
-      // New APEX fields
       activity_state: activityState,
       activity_name: ACTIVITY_NAMES[activityState] || 'unknown',
+      is_combat: activityState === 4 || activityState === 5,
       calories,
       distance_m: distanceM,
       speed_kmh: speedKmh,
@@ -230,7 +277,8 @@ export class AthloniaBandService {
       hardest_impact: hardestImpact,
       ppg_ok: ppgOk,
       imu_ok: imuOk,
-      packet_size: PACKET_LENGTH_APEX,
+      packet_size: view.byteLength,
+      combat,
     };
   }
 
