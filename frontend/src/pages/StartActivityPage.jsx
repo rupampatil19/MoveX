@@ -8,7 +8,7 @@ import {
   MapPin, Users, Footprints, Bike, Dumbbell, PersonStanding,
   Play, Pause, Square, Satellite, WifiOff, ArrowRight, ExternalLink, Sparkles,
   Compass, Smartphone, Activity as ActivityIcon, ShieldCheck, X, Loader2,
-  TrendingUp,
+  TrendingUp, Swords,
 } from 'lucide-react';
 import MoveXCard from '../components/ui/MoveXCard';
 import MoveXGlassPanel from '../components/ui/MoveXGlassPanel';
@@ -22,6 +22,7 @@ const activityTypes = [
   { type: 'walking', label: 'Walking',        icon: PersonStanding, description: 'GPS + motion + duration', usesGPS: true,  accent: 'text-white', bg: 'icon-tile-mint'  },
   { type: 'cycling', label: 'Cycling',        icon: Bike,           description: 'GPS + speed + duration',  usesGPS: true,  accent: 'text-white', bg: 'icon-tile-ember' },
   { type: 'workout', label: 'Indoor Workout', icon: Dumbbell,       description: 'Duration + sensors',      usesGPS: false, accent: 'text-white', bg: 'icon-tile-gold'  },
+  { type: 'combat',  label: 'Combat Training', icon: Swords,        description: 'Strikes + rounds + HR',   usesGPS: false, accent: 'text-white', bg: 'icon-tile-ember', proOnly: true },
 ];
 
 function haversineMeters(a, b) {
@@ -1129,6 +1130,10 @@ const StartActivityPage = ({ user }) => {
       navigate('/ar');
       return;
     }
+    if (type === 'combat') {
+      navigate('/combat');
+      return;
+    }
     openPermissions(type);
   };
 
@@ -1151,7 +1156,7 @@ const StartActivityPage = ({ user }) => {
 
       {/* ACTIVITY GRID */}
       <div className="grid grid-cols-2 gap-3">
-        {activityTypes.map((act) => {
+        {activityTypes.filter((act) => !act.proOnly || user?.accountType === 'PRO').map((act) => {
           const Icon = act.icon;
           return (
             <button
@@ -1168,6 +1173,12 @@ const StartActivityPage = ({ user }) => {
                 <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-[#2563EB]/10 text-[#2563EB] text-[10px] font-bold uppercase tracking-wider">
                   <Sparkles className="w-2.5 h-2.5" />
                   AR Camera
+                </span>
+              )}
+              {act.type === 'combat' && (
+                <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 text-[10px] font-bold uppercase tracking-wider">
+                  <Swords className="w-2.5 h-2.5" />
+                  PRO ATHLETE
                 </span>
               )}
             </button>
