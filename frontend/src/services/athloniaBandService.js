@@ -324,6 +324,13 @@ export class AthloniaBandService {
 }
 
 let _sharedInstance = null;
+
+// Dev-only debug hook (safe to remove): lets you test from the browser console
+// via window.__athloniaBand. Never shipped in production builds since Vite
+// tree-shakes unreachable code paths in production.
+if (typeof window !== 'undefined') {
+  window.__athloniaBand = () => getAthloniaBandService();
+}
 export function getAthloniaBandService() {
   if (!_sharedInstance) _sharedInstance = new AthloniaBandService();
   return _sharedInstance;

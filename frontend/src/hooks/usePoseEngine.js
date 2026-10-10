@@ -363,8 +363,28 @@ export function usePoseEngine(videoRef, canvasRef, opts) {
 
     async function loadModel() {
       try {
-        await tf.setBackend('webgl');
-        await tf.ready();
+        // Try WebGL first (fast), fall back to CPU (slow but universal).
+        let backendSet = false;
+        try {
+          await tf.setBackend('webgl');
+          await tf.ready();
+          backendSet = true;
+          console.log('[tf] backend: webgl');
+        } catch (webglErr) {
+          console.warn('[tf] webgl failed, falling back to cpu:', webglErr.message);
+        }
+        if (!backendSet) {
+          try {
+            await tf.setBackend('cpu');
+            await tf.ready();
+            console.log('[tf] backend: cpu');
+          } catch (cpuErr) {
+            console.error('[tf] cpu backend also failed:', cpuErr.message);
+            setError('TensorFlow could not start on this device. Try a different browser.');
+            setPhaseBoth('error');
+            return;
+          }
+        }
         const detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
           modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
           enableSmoothing: true,
