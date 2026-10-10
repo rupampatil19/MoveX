@@ -35,3 +35,9 @@ patch-*.cjs
 setup-*.cjs
 fix-*.cjs
 *.bak
+# Never commit env files
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
