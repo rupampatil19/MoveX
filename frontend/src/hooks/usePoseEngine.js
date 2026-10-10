@@ -411,48 +411,116 @@ export function usePoseEngine(videoRef, canvasRef, opts) {
     optsRef.current.onHud({ cameraReady: false });
     if (streamRef.current) streamRef.current.getTracks().forEach((tr) => tr.stop());
 
-    async function start() {
+    async function tryConstraints(constraints, label) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: opts.facing },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((tr) => tr.stop());
-          return;
-        }
-        streamRef.current = stream;
-        const video = videoRef.current;
-        if (!video) return;
-        video.srcObject = stream;
-        await video.play();
-
-        const newCounter = new RepCounter(optsRef.current.exercise.repCfg);
-        newCounter.reps = counterRef.current.reps;
-        counterRef.current = newCounter;
-        analyzerRef.current.reset();
-        hipTrailRef.current = [];
-        adjHistRef.current = [];
-        framingSinceRef.current = null;
-        camOkRef.current = true;
-        optsRef.current.onHud({ cameraReady: true });
-        if (phaseRef.current === 'live') {
-          framingSinceRef.current = null;
-        }
-        maybeReadyRef.current();
-      } catch (e) {
-        console.error(e);
-        setError(
-          e instanceof DOMException && e.name === 'NotAllowedError'
-            ? 'Camera permission denied. Allow camera access in the browser and reload.'
-            : 'Could not start the camera. Is it being used by another app?'
-        );
-        setPhaseBoth('error');
+        console.log('[camera] trying:', label, JSON.stringify(constraints));
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('[camera] SUCCESS via', label);
+        return stream;
+      } catch (err) {
+        console.warn('[camera] FAILED via', label, '-', err.name, '-', err.message);
+        throw err;
       }
+    }
+
+    async function start() {
+      let stream = null;
+      let lastErr = null;
+
+      // Attempt 1: preferred facing mode (loose)
+      try {
+        stream = await tryConstraints({
+          video: { facingMode: { ideal: opts.facing } },
+          audio: false,
+        }, 'attempt-1');
+      } catch (e) { lastErr = e; }
+
+      // Attempt 2: exact facing mode
+      if (!stream) {
+        try {
+          stream = await tryConstraints({
+            video: { facingMode: { exact: opts.facing } },
+            audio: false,
+          }, 'attempt-2');
+        } catch (e) { lastErr = e; }
+      }
+
+      // Attempt 3: pick device by label from enumerateDevices
+      if (!stream) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const cams = devices.filter((d) => d.kind === 'videoinput');
+          console.log('[camera] available devices:', cams.map((c) => ({ id: c.deviceId.slice(0, 12), label: c.label })));
+          const wanted = opts.facing === 'user'
+            ? cams.find((c) => /front|user|face/i.test(c.label))
+            : cams.find((c) => /back|rear|environment/i.test(c.label));
+          const pick = wanted || cams[0];
+          if (pick) {
+            stream = await tryConstraints({
+              video: { deviceId: { exact: pick.deviceId } },
+              audio: false,
+            }, 'attempt-3');
+          }
+        } catch (e) { lastErr = e; }
+      }
+
+      // Attempt 4: minimal — any camera
+      if (!stream) {
+        try {
+          stream = await tryConstraints({ video: true, audio: false }, 'attempt-4');
+        } catch (e) { lastErr = e; }
+      }
+
+      // All failed — show real error
+      if (!stream) {
+        const errName = (lastErr && lastErr.name) || 'UnknownError';
+        const errMsg  = (lastErr && lastErr.message) || 'No details';
+        console.error('[camera] all attempts failed:', errName, errMsg);
+        let friendly = 'Camera failed: ' + errName + '. ';
+        if (errName === 'NotAllowedError') {
+          friendly += 'Permission was denied OR another app is using the camera. Close WhatsApp / Instagram / Camera and try again.';
+        } else if (errName === 'NotFoundError') {
+          friendly += 'No camera found on this device.';
+        } else if (errName === 'NotReadableError') {
+          friendly += 'Camera is busy. Close other apps and reload.';
+        } else if (errName === 'OverconstrainedError') {
+          friendly += 'Camera does not support the requested settings.';
+        } else {
+          friendly += errMsg;
+        }
+        setError(friendly);
+        setPhaseBoth('error');
+        return;
+      }
+
+      // Success
+      if (cancelled) {
+        stream.getTracks().forEach((tr) => tr.stop());
+        return;
+      }
+      streamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch (playErr) {
+        console.warn('[camera] video.play() failed:', playErr.name);
+      }
+
+      const newCounter = new RepCounter(optsRef.current.exercise.repCfg);
+      newCounter.reps = counterRef.current.reps;
+      counterRef.current = newCounter;
+      analyzerRef.current.reset();
+      hipTrailRef.current = [];
+      adjHistRef.current = [];
+      framingSinceRef.current = null;
+      camOkRef.current = true;
+      optsRef.current.onHud({ cameraReady: true });
+      if (phaseRef.current === 'live') {
+        framingSinceRef.current = null;
+      }
+      maybeReadyRef.current();
     }
     start();
 
