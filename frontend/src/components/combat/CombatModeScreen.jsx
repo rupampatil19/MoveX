@@ -2,33 +2,34 @@
  * CombatModeScreen.jsx
  * ============================================================
  * Pro-only combat training mode for MoveX.
- * Three phases: setup -> live -> report
- * Data source: combatSessionService (Phase 1, 50-byte APEX packet).
- * v10.1 combat fields light up automatically when firmware is flashed.
+ *
+ * Three phases:
+ *   setup  -> light MoveX UI (matches dashboard + start page)
+ *   live   -> dark fight-night HUD (intentional contrast for focus)
+ *   report -> light MoveX report (matches other MoveX reports)
+ *
+ * Data source: combatSessionService.
+ * v10.1 combat fields auto-populate when firmware is flashed.
  * ============================================================
  */
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Play, Square, Heart, Flame, Zap, Shield,
-  AlertTriangle, CheckCircle2, XCircle, RotateCcw, Bluetooth, Swords,
+  X, Play, Square, Heart, Flame, Zap, Shield, Bluetooth,
+  AlertTriangle, CheckCircle2, XCircle, RotateCcw, Swords, ArrowRight,
 } from 'lucide-react';
+import MoveXCard from '../ui/MoveXCard';
 import MoveXGlassPanel from '../ui/MoveXGlassPanel';
 import Button from '../ui/Button';
+import SportModeSelector from './SportModeSelector';
 import { createCombatSession } from '../../services/combatSessionService';
 import { getAthloniaBandService } from '../../services/athloniaBandService';
 import API from '../../api';
 
-const DISCIPLINES = [
-  { id: 'boxing',   label: 'Boxing',    hint: '3 x 3 min rounds' },
-  { id: 'mma',      label: 'MMA',       hint: '5 x 5 min rounds' },
-  { id: 'muaythai', label: 'Muay Thai', hint: '5 x 3 min rounds' },
-];
-
 const ROUND_PRESETS = [
-  { id: '3x3', rounds: 3, roundSec: 180, restSec: 60, label: '3 x 3 min', desc: 'Standard boxing' },
-  { id: '5x3', rounds: 5, roundSec: 180, restSec: 60, label: '5 x 3 min', desc: 'Championship' },
-  { id: '3x2', rounds: 3, roundSec: 120, restSec: 60, label: '3 x 2 min', desc: 'Quick session' },
+  { id: '3x3', rounds: 3, roundSec: 180, restSec: 60, label: '3 \u00D7 3 min', desc: 'Standard boxing' },
+  { id: '5x3', rounds: 5, roundSec: 180, restSec: 60, label: '5 \u00D7 3 min', desc: 'Championship' },
+  { id: '3x2', rounds: 3, roundSec: 120, restSec: 60, label: '3 \u00D7 2 min', desc: 'Quick session' },
 ];
 
 const fmtTime = (sec) => {
@@ -127,94 +128,158 @@ const CombatModeScreen = ({ onExit }) => {
     } finally { setPosting(false); }
   };
 
-  // ==================== SETUP ====================
+  // ============================================================
+  // SETUP — light MoveX styling
+  // ============================================================
   if (phase === 'setup') {
     return (
-      <div className="fixed inset-0 z-[10000] bg-gradient-to-br from-[#0B1220] via-[#0F1A2E] to-[#0B1220] overflow-y-auto">
-        <div className="max-w-md mx-auto p-4 py-8 space-y-4">
+      <div className="fixed inset-0 z-[10000] overflow-y-auto bg-gradient-to-br from-[#EFF6FF] via-[#DBEAFE] to-[#E0E7FF]">
+        <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-red-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-[#2563EB]/8 blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-md mx-auto p-4 py-6 space-y-4 pb-10">
+          {/* TOP BAR */}
           <div className="flex items-center justify-between">
-            <button onClick={onExit} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center active:scale-95" aria-label="Exit">
+            <button
+              onClick={onExit}
+              className="w-10 h-10 rounded-full bg-white/80 backdrop-blur shadow-premium text-ink-700 flex items-center justify-center active:scale-95 transition"
+              aria-label="Exit"
+            >
               <X className="w-5 h-5" />
             </button>
-            <div className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[10px] font-bold uppercase tracking-widest">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur shadow-premium text-[10px] font-bold uppercase tracking-widest text-red-600">
+              <Swords className="w-3 h-3" />
               Combat Training
-            </div>
-            <div className={'w-10 h-10 rounded-full flex items-center justify-center ' + (bandConnected ? 'bg-mint-500/20 text-mint-400' : 'bg-red-500/20 text-red-400')}>
+            </span>
+            <div className={
+              'w-10 h-10 rounded-full flex items-center justify-center backdrop-blur shadow-premium ' +
+              (bandConnected ? 'bg-mint-500/15 text-mint-600' : 'bg-red-500/15 text-red-500')
+            }>
               <Bluetooth className="w-5 h-5" />
             </div>
           </div>
 
-          <div className="text-white">
-            <h1 className="text-2xl font-bold leading-tight">Pick your fight</h1>
-            <p className="text-sm text-white/60 mt-1">Choose discipline and rounds. Strike counting, HR zones, and round breakdown run live.</p>
+          {/* HERO */}
+          <div
+            className="relative overflow-hidden rounded-hero p-5 sm:p-6 text-white shadow-hero"
+            style={{ background: 'linear-gradient(135deg, #7C2D12 0%, #B91C1C 55%, #991B1B 100%)' }}
+          >
+            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="relative">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur text-[9px] font-bold uppercase tracking-widest mb-3">
+                <Swords className="w-2.5 h-2.5" />
+                Pro Athlete
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-1">
+                Pick your fight
+              </h1>
+              <p className="text-sm text-white/85 leading-relaxed">
+                Choose your discipline and rounds. Strike counting, HR zones, and round-by-round breakdown run live.
+              </p>
+            </div>
           </div>
 
+          {/* BAND STATUS WARNING */}
           {!bandConnected && (
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-100">
-                <p className="font-semibold">Band not connected</p>
-                <p className="text-xs mt-0.5 opacity-80">Connect your APEX band from the Pro dashboard.</p>
+            <div className="rounded-panel border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-900">Band not connected</p>
+                <p className="text-xs text-amber-800/80 mt-0.5">
+                  Connect your APEX band from the Pro dashboard to enable strike tracking.
+                </p>
               </div>
             </div>
           )}
 
           {sessionError && (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 flex items-start gap-3">
-              <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-100">{sessionError}</p>
+            <div className="rounded-panel border border-red-500/30 bg-red-500/5 p-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+                <XCircle className="w-4 h-4 text-red-600" />
+              </div>
+              <p className="text-sm text-red-900 flex-1">{sessionError}</p>
             </div>
           )}
 
-          <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/50">Discipline</p>
-            <div className="grid grid-cols-3 gap-2">
-              {DISCIPLINES.map((d) => {
-                const active = discipline === d.id;
-                return (
-                  <button key={d.id} onClick={() => setDiscipline(d.id)}
-                    className={'rounded-2xl p-3 text-left transition active:scale-[0.98] ' +
-                      (active ? 'bg-[#2563EB] text-white shadow-lg shadow-[#2563EB]/30' : 'bg-white/5 text-white/70 border border-white/10')}>
-                    <p className="text-sm font-bold">{d.label}</p>
-                    <p className="text-[10px] mt-0.5 opacity-70">{d.hint}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* SPORT MODE — inside a MoveXCard */}
+          <MoveXCard>
+            <SportModeSelector
+              value={discipline}
+              onChange={(next) => setDiscipline(next)}
+              variant="light"
+            />
+          </MoveXCard>
 
-          <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/50">Rounds</p>
-            <div className="space-y-2">
-              {ROUND_PRESETS.map((p) => {
-                const active = presetId === p.id;
-                return (
-                  <button key={p.id} onClick={() => setPresetId(p.id)}
-                    className={'w-full rounded-2xl p-3 flex items-center justify-between transition active:scale-[0.99] ' +
-                      (active ? 'bg-[#2563EB]/20 border-2 border-[#2563EB] text-white' : 'bg-white/5 border border-white/10 text-white/70')}>
-                    <div className="text-left">
-                      <p className="text-sm font-bold">{p.label}</p>
-                      <p className="text-[10px] opacity-70">{p.desc}</p>
-                    </div>
-                    <div className={'w-5 h-5 rounded-full border-2 flex items-center justify-center ' + (active ? 'border-[#2563EB] bg-[#2563EB]' : 'border-white/30')}>
-                      {active && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                    </div>
-                  </button>
-                );
-              })}
+          {/* ROUNDS — inside a MoveXCard */}
+          <MoveXCard>
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold uppercase tracking-widest text-ink-500">
+                Rounds
+              </p>
+              <div className="space-y-2">
+                {ROUND_PRESETS.map((p) => {
+                  const active = presetId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setPresetId(p.id)}
+                      className={
+                        'w-full rounded-card p-3.5 flex items-center justify-between transition active:scale-[0.99] ' +
+                        (active
+                          ? 'bg-[#2563EB]/8 border-2 border-[#2563EB] shadow-md shadow-[#2563EB]/10'
+                          : 'bg-white border border-surface-200 hover:border-surface-300 hover:shadow-sm')
+                      }
+                    >
+                      <div className="text-left">
+                        <p className={'text-sm font-semibold ' + (active ? 'text-[#2563EB]' : 'text-ink-900')}>
+                          {p.label}
+                        </p>
+                        <p className="text-[11px] text-ink-500 mt-0.5">{p.desc}</p>
+                      </div>
+                      <div className={
+                        'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ' +
+                        (active ? 'border-[#2563EB] bg-[#2563EB]' : 'border-surface-300 bg-white')
+                      }>
+                        {active && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          </MoveXCard>
 
-          <button onClick={handleStart} disabled={!bandConnected}
-            className={'w-full py-4 rounded-2xl font-bold text-base transition active:scale-[0.98] flex items-center justify-center gap-2 ' +
-              (bandConnected ? 'bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-lg shadow-[#2563EB]/30' : 'bg-white/5 text-white/30 cursor-not-allowed')}>
+          {/* START BUTTON */}
+          <button
+            onClick={handleStart}
+            disabled={!bandConnected}
+            className={
+              'w-full py-4 rounded-card font-bold text-base transition active:scale-[0.98] flex items-center justify-center gap-2 ' +
+              (bandConnected
+                ? 'bg-gradient-to-b from-[#DC2626] to-[#991B1B] text-white shadow-lg shadow-red-600/25'
+                : 'bg-surface-100 text-ink-400 cursor-not-allowed')
+            }
+          >
             <Play className="w-5 h-5" />
             Start Session
+            {bandConnected && <ArrowRight className="w-4 h-4 ml-1 opacity-70" />}
           </button>
+
+          {!bandConnected && (
+            <p className="text-[11px] text-ink-500 text-center -mt-1">
+              Connect your band to unlock Start Session.
+            </p>
+          )}
         </div>
       </div>
     );
-  }  // ==================== LIVE ====================
+  }
+
+  // ============================================================
+  // LIVE — dark fight-night HUD (intentional)
+  // ============================================================
   if (phase === 'live') {
     const s = snapshot || {};
     const isFighting = s.state === 'fighting';
@@ -299,7 +364,9 @@ const CombatModeScreen = ({ onExit }) => {
     );
   }
 
-  // ==================== REPORT ====================
+  // ============================================================
+  // REPORT — light MoveX report
+  // ============================================================
   const r = report || {};
   const t = r.totals || {};
   const rounds = r.rounds || [];
@@ -307,7 +374,7 @@ const CombatModeScreen = ({ onExit }) => {
   const distTotal = (dist.straight + dist.hook + dist.uppercut + dist.block) || 1;
 
   return (
-    <div className="fixed inset-0 z-[10000] bg-gradient-to-br from-[#EFF6FF] via-[#DBEAFE] to-[#E0E7FF] overflow-y-auto">
+    <div className="fixed inset-0 z-[10000] overflow-y-auto bg-gradient-to-br from-[#EFF6FF] via-[#DBEAFE] to-[#E0E7FF]">
       <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-[#2563EB]/10 blur-3xl pointer-events-none" />
       <div className="relative max-w-md mx-auto p-4 py-8 space-y-3">
         <MoveXGlassPanel className="text-center">
