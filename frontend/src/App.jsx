@@ -23,6 +23,7 @@ import QuestsPage from './pages/QuestsPage';
 import EventsPage from './pages/EventsPage';
 import MapPage from './pages/MapPage';
 import DashboardLayout from './components/layout/DashboardLayout';
+import CombatModeScreen from './components/combat/CombatModeScreen';
 import { TrophyProvider } from './context/TrophyContext';
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
                   <Route path="/ai-coach" element={<AICoachPage user={user} />} />
                   <Route path="/penalties" element={<PenaltiesPage />} />
                   <Route path="/game-modes" element={<GameModesPage />} />
+                  <Route path="/combat" element={<CombatModeScreen onExit={() => window.history.back()} />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/rewards" element={<RewardsPage />} />
                   <Route path="/clan" element={<ClanPage user={user} />} />
