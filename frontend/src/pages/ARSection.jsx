@@ -11,6 +11,7 @@ import {
 import { EXERCISES } from '../lib/ar/exercises.js';
 import { loadSessions } from '../lib/ar/history.js';
 import ARWorkoutScreen from '../components/ar/ARWorkoutScreen';
+import ARGhostPreview from '../components/ar/ARGhostPreview';
 import MoveXCard from '../components/ui/MoveXCard';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
@@ -31,6 +32,10 @@ const ARSection = () => {
   const startWorkout = (ex) => {
     setExercise(ex);
     setSummary(null);
+    setScreen('ghost');
+  };
+
+  const enterWorkout = () => {
     setScreen('workout');
   };
 
@@ -39,6 +44,17 @@ const ARSection = () => {
     setSummary(null);
     setScreen('picker');
   };
+
+  // GHOST PREVIEW (3D trainer + floor scan)
+  if (screen === 'ghost' && exercise) {
+    return (
+      <ARGhostPreview
+        exercise={exercise}
+        onStart={enterWorkout}
+        onBack={exitWorkout}
+      />
+    );
+  }
 
   // WORKOUT
   if (screen === 'workout' && exercise) {
