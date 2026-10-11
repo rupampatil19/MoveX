@@ -127,22 +127,32 @@ export function usePoseEngine(videoRef, canvasRef, opts) {
     const mirrored = () => optsRef.current.facing === 'user';
 
     function mapPoint(x, y, cw, ch, vw, vh) {
-      // Some pose models return keypoints in 0..1 normalized space; others return pixels.
-      // Auto-detect: if all coordinates are <= 1.5, treat as normalized and scale up.
-      // (The mapPoint is called per-keypoint, so we detect per-point.)
-      let nx = x;
-      let ny = y;
-      // Heuristic: if x or y is in 0..1 range, assume normalized output.
+      // The pose model may return keypoints in one of three coordinate spaces:
+      //   (a) normalized 0..1  - official TF.js MoveNet
+      //   (b) model input space 0..192  - community model exports
+      //   (c) video pixel space 0..videoWidth  - raw detection output
+      // Auto-detect per-point and convert to display pixels.
+
+      let nx = x, ny = y;
+
       if (Math.abs(x) <= 1.5 && Math.abs(y) <= 1.5) {
+        // (a) normalized 0..1
         nx = x * vw;
         ny = y * vh;
+      } else if (Math.abs(x) <= 256 && Math.abs(y) <= 256) {
+        // (b) model input space (MoveNet uses 192x192)
+        const MODEL_INPUT = 192;
+        nx = (x / MODEL_INPUT) * vw;
+        ny = (y / MODEL_INPUT) * vh;
       }
+      // (c) else: already video pixel space, use as-is
+
       const scale = Math.max(cw / vw, ch / vh);
       const ox = (cw - vw * scale) / 2;
       const oy = (ch - vh * scale) / 2;
-      let px = nx * scale + ox;
-      if (mirrored()) px = cw - px;
-      return { x: px, y: ny * scale + oy };
+      // IMPORTANT: no mirror. Android Chrome front-camera preview is unmirrored,
+      // so the skeleton uses raw video coordinates to stay in sync with the video.
+      return { x: nx * scale + ox, y: ny * scale + oy };
     }
 
     function drawSkeleton(ctx, kps, cw, ch, vw, vh, perfect) {
