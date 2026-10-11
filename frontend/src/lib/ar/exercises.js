@@ -46,6 +46,8 @@ export const EXERCISES = [
     primaryJoint: 'Elbow angle',
     placement: 'Phone on the floor, side-on to you, 1.5 to 2 m away',
     modelUrl: 'models/pushup.fbx',
+    cameraView: 'side',
+    previewAnimation: 'loop',
     instructions: [
       'Place your phone on the floor, camera facing you',
       'Make sure your full body is visible in frame',
@@ -65,6 +67,8 @@ export const EXERCISES = [
     primaryJoint: 'Knee angle',
     placement: 'Prop the phone at hip height, side-on to you, 2 to 2.5 m away',
     modelUrl: 'models/squat.fbx',
+    cameraView: 'side',
+    previewAnimation: 'loop',
     instructions: [
       'Prop your phone up, camera facing your side',
       'Stand so your full body fits the frame',
@@ -84,6 +88,8 @@ export const EXERCISES = [
     primaryJoint: 'Knee angle + torso orientation',
     placement: 'Prop the phone at hip height, side-on, 2 to 2.5 m away; keep the full body in view',
     modelUrl: 'models/burpee.fbx',
+    cameraView: 'side',
+    previewAnimation: 'loop',
     instructions: [
       'Start standing with feet about shoulder-width apart',
       'Squat and place hands on the floor, then step or jump back to plank',
@@ -103,6 +109,8 @@ export const EXERCISES = [
     primaryJoint: 'Shoulder-hip-knee angle',
     placement: 'Phone on the floor or low support, side-on, 1.5 to 2 m away; keep shoulders and knees visible',
     modelUrl: 'models/situps.fbx',
+    cameraView: 'side',
+    previewAnimation: 'loop',
     instructions: [
       'Lie on your back with knees bent and feet planted',
       'Curl your torso upward without pulling on your neck',
@@ -122,6 +130,8 @@ export const EXERCISES = [
     primaryJoint: 'Arm elevation + symmetry',
     placement: 'Prop the phone at chest height, facing you, 2 to 3 m away; keep your full body in view',
     modelUrl: 'models/jumping-jacks.fbx',
+    cameraView: 'front',
+    previewAnimation: 'loop',
     instructions: [
       'Stand tall with feet together and arms by your sides',
       'Jump feet apart while raising arms overhead',
