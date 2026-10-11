@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Clock, Award, PersonStanding, Dumbbell,
-  ChevronRight, TrendingUp, Sparkles, Activity as ActivityIcon,
+  ChevronRight, TrendingUp, Sparkles, AlertTriangle, Activity as ActivityIcon,
 } from 'lucide-react';
 import { EXERCISES } from '../lib/ar/exercises.js';
 import { loadSessions } from '../lib/ar/history.js';
@@ -28,6 +28,19 @@ const ARSection = () => {
   const [screen, setScreen] = useState('picker');
   const [exercise, setExercise] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [xrSupported, setXrSupported] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') {
+      setXrSupported(false);
+      return;
+    }
+    navigator.xr.isSessionSupported('immersive-ar').then((ok) => {
+      if (alive) setXrSupported(!!ok);
+    }).catch(() => { if (alive) setXrSupported(false); });
+    return () => { alive = false; };
+  }, []);
 
   const startWorkout = (ex) => {
     setExercise(ex);
@@ -90,6 +103,21 @@ const ARSection = () => {
           </p>
         </div>
       </div>
+
+      {!xrSupported && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-900">ARCore recommended</p>
+            <p className="text-xs text-amber-800/80 mt-0.5 leading-relaxed">
+              Live AR floor placement needs Chrome on an ARCore phone (Pixel, Galaxy S20+, OnePlus 9+).
+              On this device the trainer uses gyroscope-based floor estimation — the workout still works.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {EXERCISES.map((ex) => {
