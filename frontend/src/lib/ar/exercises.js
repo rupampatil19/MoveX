@@ -2,8 +2,9 @@
  * Exercise definitions for AR workouts.
  * Ported from AR Fit (TS to JS).
  */
-import { PUSHUP_CFG, SQUAT_CFG } from './repCounter.js';
+import { PUSHUP_CFG, SQUAT_CFG, BURPEE_CFG, SITUP_CFG, JUMPING_JACK_CFG } from './repCounter.js';
 import { PushupAnalyzer, SquatAnalyzer } from './analyzers.js';
+import { BurpeeAnalyzer, SitupAnalyzer, JumpingJackAnalyzer } from './extraAnalyzers.js';
 
 const pushupGhostBones = [
   { a: [0.22, 0.62], b: [0.32, 0.66] },
@@ -74,6 +75,63 @@ export const EXERCISES = [
     ghostJoints: squatGhostBones.flatMap((b) => [b.a, b.b]),
     repCfg: SQUAT_CFG,
     makeAnalyzer: () => new SquatAnalyzer(),
+  },
+  {
+    id: 'burpee',
+    name: 'Burpee',
+    tagline: 'Full Body - Conditioning',
+    targetReps: 8,
+    primaryJoint: 'Knee angle + torso orientation',
+    placement: 'Prop the phone at hip height, side-on, 2 to 2.5 m away; keep the full body in view',
+    modelUrl: 'models/burpee.fbx',
+    instructions: [
+      'Start standing with feet about shoulder-width apart',
+      'Squat and place hands on the floor, then step or jump back to plank',
+      'Keep the trunk controlled; return feet near hands and stand tall',
+      'Step instead of jumping for a lower-impact version',
+    ],
+    ghostBones: squatGhostBones,
+    ghostJoints: squatGhostBones.flatMap((b) => [b.a, b.b]),
+    repCfg: BURPEE_CFG,
+    makeAnalyzer: () => new BurpeeAnalyzer(),
+  },
+  {
+    id: 'situps',
+    name: 'Sit-Ups',
+    tagline: 'Abs - Core',
+    targetReps: 12,
+    primaryJoint: 'Shoulder-hip-knee angle',
+    placement: 'Phone on the floor or low support, side-on, 1.5 to 2 m away; keep shoulders and knees visible',
+    modelUrl: 'models/situps.fbx',
+    instructions: [
+      'Lie on your back with knees bent and feet planted',
+      'Curl your torso upward without pulling on your neck',
+      'Lower under control; keep movement smooth rather than bouncing',
+      'Stop if you feel back or neck pain',
+    ],
+    ghostBones: squatGhostBones,
+    ghostJoints: squatGhostBones.flatMap((b) => [b.a, b.b]),
+    repCfg: SITUP_CFG,
+    makeAnalyzer: () => new SitupAnalyzer(),
+  },
+  {
+    id: 'jumping-jacks',
+    name: 'Jumping Jacks',
+    tagline: 'Cardio - Full Body',
+    targetReps: 20,
+    primaryJoint: 'Arm elevation + symmetry',
+    placement: 'Prop the phone at chest height, facing you, 2 to 3 m away; keep your full body in view',
+    modelUrl: 'models/jumping-jacks.fbx',
+    instructions: [
+      'Stand tall with feet together and arms by your sides',
+      'Jump feet apart while raising arms overhead',
+      'Return to the start position and count one full open-close cycle',
+      'Land softly; use side steps instead of jumps for low impact',
+    ],
+    ghostBones: pushupGhostBones,
+    ghostJoints: pushupGhostBones.flatMap((b) => [b.a, b.b]),
+    repCfg: JUMPING_JACK_CFG,
+    makeAnalyzer: () => new JumpingJackAnalyzer(),
   },
 ];
 

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Clock, Award, PersonStanding, Dumbbell,
-  ChevronRight, TrendingUp, Sparkles,
+  ChevronRight, TrendingUp, Sparkles, Activity as ActivityIcon,
 } from 'lucide-react';
 import { EXERCISES } from '../lib/ar/exercises.js';
 import { loadSessions } from '../lib/ar/history.js';
@@ -18,6 +18,9 @@ import EmptyState from '../components/ui/EmptyState';
 const ICON_MAP = {
   squat: PersonStanding,
   pushup: Dumbbell,
+  burpee: ActivityIcon,
+  situps: ActivityIcon,
+  'jumping-jacks': Sparkles,
 };
 
 const ARSection = () => {

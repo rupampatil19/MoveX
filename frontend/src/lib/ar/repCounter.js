@@ -27,6 +27,57 @@ export const SQUAT_CFG = {
   maxJumpDeg: 55,
 };
 
+// Coaching signal configurations for the added exercises (from ARFit v6).
+// Values are 2-D MoveNet heuristics; camera angle and individual range of motion affect results.
+export const BURPEE_CFG = {
+  upAngle: 160,
+  downAngle: 100,
+  leaveMargin: 10,
+  minRepMs: 1200,
+  maxRepMs: 18000,
+  bottomDwellMs: 70,
+  lostMs: 1000,
+  emaAlpha: 0.4,
+  maxJumpDeg: 60,
+};
+
+export const SITUP_CFG = {
+  upAngle: 150,
+  downAngle: 105,
+  leaveMargin: 10,
+  minRepMs: 900,
+  maxRepMs: 15000,
+  bottomDwellMs: 80,
+  lostMs: 900,
+  emaAlpha: 0.45,
+  maxJumpDeg: 60,
+};
+
+export const JUMPING_JACK_CFG = {
+  upAngle: 155,
+  downAngle: 80,
+  leaveMargin: 10,
+  minRepMs: 450,
+  maxRepMs: 8000,
+  bottomDwellMs: 50,
+  lostMs: 700,
+  emaAlpha: 0.5,
+  maxJumpDeg: 65,
+};
+
+// Unused by RepCounter for plank; reserved for a future hold-mode feature.
+export const PLANK_CFG = {
+  upAngle: 170,
+  downAngle: 160,
+  leaveMargin: 5,
+  minRepMs: 1000,
+  maxRepMs: 60000,
+  bottomDwellMs: 50,
+  lostMs: 1500,
+  emaAlpha: 0.4,
+  maxJumpDeg: 35,
+};
+
 export class RepCounter {
   constructor(cfg) {
     this.cfg = cfg;
