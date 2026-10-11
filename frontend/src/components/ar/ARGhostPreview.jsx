@@ -633,8 +633,11 @@ export default function ARGhostPreview({ exercise, onStart, onBack }) {
     // Only use WebXR if the immersive-ar session mode is actually available.
     // Chrome exposes navigator.xr even on phones without ARCore, so we must
     // check isSessionSupported before requesting a session.
+    // Feature flag: set VITE_ENABLE_AR_XR=false on Render to force camera mode
+    // (useful if a specific ARCore device misbehaves during the demo).
+    const flagOn = import.meta.env.VITE_ENABLE_AR_XR !== "false";
     let xrSupported = false;
-    if (navigator.xr && typeof navigator.xr.isSessionSupported === "function") {
+    if (flagOn && navigator.xr && typeof navigator.xr.isSessionSupported === "function") {
       try {
         xrSupported = await navigator.xr.isSessionSupported("immersive-ar");
         console.log("[MoveX AR] isSessionSupported(immersive-ar):", xrSupported);
