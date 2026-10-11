@@ -127,12 +127,22 @@ export function usePoseEngine(videoRef, canvasRef, opts) {
     const mirrored = () => optsRef.current.facing === 'user';
 
     function mapPoint(x, y, cw, ch, vw, vh) {
+      // Some pose models return keypoints in 0..1 normalized space; others return pixels.
+      // Auto-detect: if all coordinates are <= 1.5, treat as normalized and scale up.
+      // (The mapPoint is called per-keypoint, so we detect per-point.)
+      let nx = x;
+      let ny = y;
+      // Heuristic: if x or y is in 0..1 range, assume normalized output.
+      if (Math.abs(x) <= 1.5 && Math.abs(y) <= 1.5) {
+        nx = x * vw;
+        ny = y * vh;
+      }
       const scale = Math.max(cw / vw, ch / vh);
       const ox = (cw - vw * scale) / 2;
       const oy = (ch - vh * scale) / 2;
-      let px = x * scale + ox;
+      let px = nx * scale + ox;
       if (mirrored()) px = cw - px;
-      return { x: px, y: y * scale + oy };
+      return { x: px, y: ny * scale + oy };
     }
 
     function drawSkeleton(ctx, kps, cw, ch, vw, vh, perfect) {
@@ -228,6 +238,7 @@ export function usePoseEngine(videoRef, canvasRef, opts) {
       let analysis = null;
       try {
         const poses = await detector.estimatePoses(video, { flipHorizontal: false });
+        // Note: we mirror in mapPoint() for the "user" (front) camera, so keep flipHorizontal false here.
         const pose = poses[0];
         const cur = phaseRef.current;
         if (pose && pose.keypoints) {

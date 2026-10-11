@@ -113,7 +113,8 @@ const ARWorkoutScreen = ({ exercise, summary, onSummaryChange, onExit }) => {
   return (
     <div className="fixed inset-0 z-[60] bg-black">
       <video ref={videoRef} playsInline muted autoPlay
-        className="absolute inset-0 w-full h-full object-cover" />
+  	className="absolute inset-0 w-full h-full object-cover"
+  	style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }} />
       <canvas ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none" />
 
