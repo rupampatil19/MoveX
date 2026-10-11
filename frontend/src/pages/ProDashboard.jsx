@@ -13,6 +13,7 @@ import { useTrophy } from '../context/TrophyContext';
 import FriendlyNudge from '../components/penalties/FriendlyNudge';
 import WinBackBanner from '../components/penalties/WinBackBanner';
 import AthloniaBandWidget from '../components/band/AthloniaBandWidget';
+import ARQuickAction from '../components/ar/ARQuickAction';
 
 const ProDashboard = ({ user }) => {
   const [activities, setActivities] = useState([]);
@@ -73,6 +74,9 @@ const ProDashboard = ({ user }) => {
 
       {/* ATHLONIA BAND */}
       <AthloniaBandWidget />
+
+      {/* AR TRAINING (Pro) */}
+      <ARQuickAction />
 
 
       {/* HERO */}
