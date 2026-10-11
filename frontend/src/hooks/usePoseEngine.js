@@ -387,6 +387,7 @@ export function usePoseEngine(videoRef, canvasRef, opts) {
         }
         const detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
           modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+          modelUrl: '/models/movenet-singlepose-lightning/model.json',
           enableSmoothing: true,
         });
         if (cancelled) return;
