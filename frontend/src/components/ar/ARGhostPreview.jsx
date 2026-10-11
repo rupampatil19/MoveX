@@ -566,6 +566,7 @@ export default function ARGhostPreview({ exercise, onStart, onBack }) {
 
       const hitPt = new THREE.Vector3();
       const target = new THREE.Vector3();
+      let _diagT = 0;
       const tick = () => {
         if (!alive) return;
         const dt = clock.getDelta();
@@ -574,6 +575,14 @@ export default function ARGhostPreview({ exercise, onStart, onBack }) {
           gyro.update();
           if (!placed) {
             const ok = floorHit(camera, 0, -0.1, hitPt, 12);
+            // Diagnostic: log floor hit status once per second so we can debug
+            // whether the phone orientation is producing a downward ray.
+            const nowMs = performance.now();
+            if (nowMs - _diagT > 1000) {
+              _diagT = nowMs;
+              const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+              console.log("[MoveX AR cam] floorHit:", ok, "rayDir.y:", dir.y.toFixed(3), "camQuat:", camera.quaternion.x.toFixed(3), camera.quaternion.y.toFixed(3), camera.quaternion.z.toFixed(3), camera.quaternion.w.toFixed(3));
+            }
             if (ok) {
               camera.getWorldPosition(camPos);
               const dx = hitPt.x - camPos.x, dz = hitPt.z - camPos.z;
@@ -617,18 +626,34 @@ export default function ARGhostPreview({ exercise, onStart, onBack }) {
       go("error");
     }
   }, [go, setModeBoth, setStatus, exercise.cameraView]);
-  const begin = useCallback(() => {
+  const begin = useCallback(async () => {
     if (startedRef.current) return;
     startedRef.current = true;
-    if (navigator.xr) startXR();
-    else {
-      setNote(
-        window.isSecureContext
-          ? "Camera mode: the floor is estimated. Live floor scan needs Chrome on an ARCore phone."
-          : "Live floor scan needs the https link."
-      );
-      startCam();
+
+    // Only use WebXR if the immersive-ar session mode is actually available.
+    // Chrome exposes navigator.xr even on phones without ARCore, so we must
+    // check isSessionSupported before requesting a session.
+    let xrSupported = false;
+    if (navigator.xr && typeof navigator.xr.isSessionSupported === "function") {
+      try {
+        xrSupported = await navigator.xr.isSessionSupported("immersive-ar");
+        console.log("[MoveX AR] isSessionSupported(immersive-ar):", xrSupported);
+      } catch (e) {
+        console.warn("[MoveX AR] isSessionSupported threw:", e);
+      }
     }
+
+    if (xrSupported) {
+      startXR();
+      return;
+    }
+
+    setNote(
+      window.isSecureContext
+        ? "Camera mode: the floor is estimated. Live floor scan needs Chrome on an ARCore phone."
+        : "Live floor scan needs the https link."
+    );
+    startCam();
   }, [startXR, startCam]);
 
   const beginWorkout = () => {
